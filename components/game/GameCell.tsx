@@ -2,8 +2,8 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { X, Circle } from "lucide-react";
 import { CellValue } from "@/types/game";
+import { GameSkinIcon } from "./GameSkinIcon";
 
 interface GameCellProps {
   value: CellValue;
@@ -32,12 +32,12 @@ export function GameCell({
       style={{
         width: "80px",
         height: "80px",
-        backgroundColor: value ? "#111111" : "rgba(17,17,17,0.8)",
+        backgroundColor: value ? "var(--bg-card-solid, #111111)" : "var(--bg-card, rgba(17,17,17,0.8))",
         border: isWinningCell
           ? "2px solid #FFD700"
           : value
-          ? "2px solid #333"
-          : "2px solid #1a1a1a",
+          ? "2px solid var(--border-color, #333)"
+          : "2px solid var(--border-color, #1a1a1a)",
         borderRadius: "12px",
         display: "flex",
         alignItems: "center",
@@ -48,29 +48,14 @@ export function GameCell({
         boxShadow: isWinningCell ? "0 0 20px #FFD700" : "none",
         animation: isWinningCell ? "winPulse 0.8s ease-in-out infinite" : "none",
       }}
-      whileHover={isMyTurn && !value ? { scale: 1.05, borderColor: "#00FFFF44" } : {}}
+      whileHover={isMyTurn && !value ? { scale: 1.05, borderColor: "var(--accent-x, #00FFFF44)" } : {}}
       whileTap={isMyTurn && !value ? { scale: 0.95 } : {}}
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.2, delay: index * 0.03 }}
     >
-      {value === "X" && (
-        <motion.div
-          initial={{ scale: 0, rotate: -180, opacity: 0 }}
-          animate={{ scale: 1, rotate: 0, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        >
-          <X style={{ width: "48px", height: "48px", color: "#00FFFF" }} strokeWidth={3} />
-        </motion.div>
-      )}
-      {value === "O" && (
-        <motion.div
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 200, damping: 15 }}
-        >
-          <Circle style={{ width: "48px", height: "48px", color: "#FF00FF" }} strokeWidth={3} />
-        </motion.div>
+      {value && (
+        <GameSkinIcon symbol={value} size={48} />
       )}
       {isLastMove && !value && (
         <motion.div

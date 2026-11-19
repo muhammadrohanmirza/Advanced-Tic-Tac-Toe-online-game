@@ -10,11 +10,14 @@ import { NeonInput } from "@/components/ui/NeonInput";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Leaderboard } from "@/components/leaderboard/Leaderboard";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Copy, Check, Users, Cpu, Menu, X as XIcon, LogOut, Loader2 } from "lucide-react";
+import { Plus, Copy, Check, Users, Cpu, Menu, X as XIcon, LogOut, Loader2, Timer, Eye, RefreshCw, History } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import * as Switch from "@radix-ui/react-switch";
 import { getSocket } from "@/lib/socket-client";
 import { useWindowSize } from "@/hooks/useWindowSize";
+import { SoundControls } from "@/components/ui/SoundControls";
+import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher";
+import { useSound } from "@/hooks/useSound";
 
 type GameMode = "multiplayer" | "ai";
 type Difficulty = "easy" | "medium" | "hard";
@@ -34,8 +37,13 @@ export default function LobbyPage() {
   const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(true);
   const [createdRoom, setCreatedRoom] = useState<{ code: string; id: string } | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
+  const [playerSymbolAI, setPlayerSymbolAI] = useState<"X" | "O">("X");
+  const [turnDuration, setTurnDuration] = useState<number>(15);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [publicRooms, setPublicRooms] = useState<any[]>([]);
+  const [isLoadingPublicRooms, setIsLoadingPublicRooms] = useState(false);
 
+  const { playSfx } = useSound();
   const socket = getSocket();
 
   useEffect(() => {
@@ -71,6 +79,7 @@ export default function LobbyPage() {
       if (id) setCreatedRoom({ code, id });
       setIsCreating(false);
       toast.success("Room created! Share the code.");
+      socket.emit("get-public-rooms");
     });
 
     socket.on("room-joined", (data: any) => {
@@ -95,23 +104,43 @@ export default function LobbyPage() {
       }
     });
 
+    socket.on("public-rooms-list", (data: any) => {
+      console.log("[Lobby] public-rooms-list:", data);
+      if (Array.isArray(data?.rooms)) {
+        setPublicRooms(data.rooms);
+      }
+      setIsLoadingPublicRooms(false);
+    });
+
     socket.on("error", (data) => {
       console.error("[Lobby] error:", data);
       setJoinError(data.message);
       toast.error(data.message);
       setIsJoining(false);
       setIsCreating(false);
+      if (data?.message?.includes("Room not found") || data?.message?.includes("not found")) {
+        setRoomCode("");
+      }
     });
 
+    // Initial fetch of public rooms and periodic refresh
+    socket.emit("get-public-rooms");
+    const interval = setInterval(() => {
+      socket.emit("get-public-rooms");
+    }, 5000);
+
     return () => {
+      clearInterval(interval);
       socket.off("room-created");
       socket.off("room-joined");
       socket.off("player-joined");
+      socket.off("public-rooms-list");
       socket.off("error");
     };
   }, [socket, router]);
 
   const handleCreateRoom = () => {
+    playSfx("click");
     if (!session?.user) {
       toast.error("Please log in");
       return;
@@ -122,32 +151,54 @@ export default function LobbyPage() {
       userId: session.user.id,
       userName: session.user.name || "Player",
       isPublic,
+      turnDuration,
     });
   };
 
   const handleJoinRoom = () => {
+    playSfx("click");
     if (!session?.user) {
       toast.error("Please log in");
       return;
     }
-    if (roomCode.length < 4) {
+    const trimmed = roomCode.trim();
+    if (trimmed.length < 4) {
       setJoinError("Enter a valid 4-character code");
       return;
     }
     setIsJoining(true);
     setJoinError(null);
+    const targetId = trimmed.length === 4 ? trimmed.toUpperCase() : trimmed;
     socket?.emit("join-room", {
-      roomId: roomCode.toUpperCase().trim(),
+      roomId: targetId,
       userId: session.user.id,
       userName: session.user.name || "Player",
     });
   };
 
+  const handleWatchRoom = (codeToWatch?: string) => {
+    playSfx("click");
+    if (!session?.user) {
+      toast.error("Please log in");
+      return;
+    }
+    const rawTarget = (codeToWatch || roomCode).trim();
+    if (rawTarget.length < 4) {
+      setJoinError("Enter a valid 4-character code to spectate");
+      return;
+    }
+    // Only uppercase 4-character room codes; preserve UUIDs as-is
+    const targetCode = rawTarget.length === 4 ? rawTarget.toUpperCase() : rawTarget;
+    router.push(`/room/${targetCode}?spectate=true`);
+  };
+
   const handlePlayAI = () => {
-    router.push(`/play-ai?difficulty=${difficulty}`);
+    playSfx("click");
+    router.push(`/play-ai?difficulty=${difficulty}&symbol=${playerSymbolAI}`);
   };
 
   const handleLogout = () => {
+    playSfx("click");
     setIsMenuOpen(false);
     router.push("/");
   };
@@ -168,21 +219,21 @@ export default function LobbyPage() {
 
   if (status === "loading") {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#050505" }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "var(--bg-primary, #050505)" }}>
         <LoadingSpinner variant="cyan" size="xl" text="Loading..." />
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#050505", position: "relative" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: "var(--bg-primary, #050505)", position: "relative" }}>
       <Toaster position="top-right" />
 
       {/* Header - Horizontal on Desktop/Tablet, Menu on Mobile */}
       <header style={{
         padding: isMobile ? "10px 16px" : "16px",
-        borderBottom: "1px solid #1a1a1a",
-        backgroundColor: "rgba(13,13,13,0.95)",
+        borderBottom: "1px solid var(--border-color, #1a1a1a)",
+        backgroundColor: "var(--bg-card, rgba(13,13,13,0.95))",
         position: "sticky",
         top: 0,
         zIndex: 100,
@@ -213,6 +264,43 @@ export default function LobbyPage() {
           {/* Desktop/Tablet: Horizontal UserAvatar + Logout Button */}
           {!isMobile ? (
             <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+              <SoundControls align="right" />
+              <ThemeSwitcher align="right" />
+              <motion.button
+                type="button"
+                onClick={() => {
+                  playSfx("click");
+                  router.push("/history");
+                }}
+                whileHover={{
+                  scale: 1.05,
+                  y: -2,
+                  boxShadow: "0 0 18px rgba(0,255,255,0.7)",
+                }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                  padding: "8px 14px",
+                  minHeight: "40px",
+                  border: "2px solid #00FFFF",
+                  borderRadius: "10px",
+                  background: "rgba(0,255,255,0.06)",
+                  color: "#00FFFF",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  textShadow: "0 0 8px #00FFFF",
+                  boxShadow: "0 0 10px rgba(0,255,255,0.25)",
+                }}
+              >
+                <History size={16} />
+                My Games
+              </motion.button>
               {session?.user && <UserAvatar userName={session.user.name} userEmail={session.user.email} />}
               
               
@@ -272,28 +360,35 @@ export default function LobbyPage() {
 </motion.button>
             </div>
           ) : (
-            /* Mobile: Hamburger Menu */
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              style={{
-                background: "transparent",
-                border: "1px solid #00FFFF",
-                borderRadius: "8px",
-                padding: "8px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                minHeight: "44px",
-                minWidth: "44px",
-              }}
-            >
-              {isMenuOpen ? (
-                <XIcon style={{ width: "24px", height: "24px", color: "#00FFFF" }} />
-              ) : (
-                <Menu style={{ width: "24px", height: "24px", color: "#00FFFF" }} />
-              )}
-            </button>
+            /* Mobile: Sound Controls + Theme Switcher + Hamburger Menu */
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <SoundControls compact align="right" />
+              <ThemeSwitcher compact align="right" />
+              <button
+                onClick={() => {
+                  playSfx("click");
+                  setIsMenuOpen(!isMenuOpen);
+                }}
+                style={{
+                  background: "transparent",
+                  border: "1px solid #00FFFF",
+                  borderRadius: "8px",
+                  padding: "8px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minHeight: "44px",
+                  minWidth: "44px",
+                }}
+              >
+                {isMenuOpen ? (
+                  <XIcon style={{ width: "24px", height: "24px", color: "#00FFFF" }} />
+                ) : (
+                  <Menu style={{ width: "24px", height: "24px", color: "#00FFFF" }} />
+                )}
+              </button>
+            </div>
           )}
         </div>
 
@@ -308,9 +403,9 @@ export default function LobbyPage() {
               style={{
                 marginTop: "16px",
                 padding: "16px",
-                backgroundColor: "rgba(13,13,13,0.95)",
+                backgroundColor: "var(--bg-card, rgba(13,13,13,0.95))",
                 borderRadius: "12px",
-                border: "1px solid #1a1a1a",
+                border: "1px solid var(--border-color, #1a1a1a)",
                 display: "flex",
                 flexDirection: "column",
                 gap: "16px",
@@ -365,6 +460,26 @@ export default function LobbyPage() {
                 </div>
               </div>
 
+              {/* My Games Button */}
+              <NeonButton
+                variant="cyan"
+                onClick={() => {
+                  playSfx("click");
+                  setIsMenuOpen(false);
+                  router.push("/history");
+                }}
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  fontSize: "14px",
+                  minHeight: "48px",
+                  justifyContent: "center",
+                }}
+              >
+                <History style={{ width: "18px", height: "18px" }} />
+                My Games & Replays
+              </NeonButton>
+
               {/* Logout Button */}
               <NeonButton
                 variant="red"
@@ -408,7 +523,10 @@ export default function LobbyPage() {
           }}
         >
           <button
-            onClick={() => setGameMode("multiplayer")}
+            onClick={() => {
+              playSfx("click");
+              setGameMode("multiplayer");
+            }}
             style={{
               flex: 1,
               padding: isMobile ? "8px 12px" : "10px 16px",
@@ -435,7 +553,10 @@ export default function LobbyPage() {
             <span style={{ whiteSpace: "nowrap" }}>Multiplayer</span>
           </button>
           <button
-            onClick={() => setGameMode("ai")}
+            onClick={() => {
+              playSfx("click");
+              setGameMode("ai");
+            }}
             style={{
               flex: 1,
               padding: isMobile ? "8px 12px" : "10px 16px",
@@ -523,6 +644,63 @@ export default function LobbyPage() {
                             <li>Wait for your friend to join using the code</li>
                             <li>Game starts automatically when both players are ready</li>
                           </ul>
+                        </div>
+
+                        {/* Turn Timer Selector */}
+                        <div style={{
+                          marginBottom: isMobile ? "14px" : "18px",
+                          padding: isMobile ? "10px 12px" : "12px 14px",
+                          backgroundColor: "rgba(255,255,255,0.02)",
+                          borderRadius: "12px",
+                          border: "1px solid var(--border-color, #1a1a1a)",
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              <Timer style={{ width: "15px", height: "15px", color: "#00FFFF" }} />
+                              <span style={{ fontSize: isMobile ? "12px" : "13px", fontWeight: 600, color: "var(--text-main, #e5e7eb)" }}>
+                                Turn Timer
+                              </span>
+                            </div>
+                            <span style={{ fontSize: "11px", color: "var(--text-muted, #9ca3af)" }}>
+                              {turnDuration === 0 ? "No limit" : `${turnDuration}s / turn`}
+                            </span>
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
+                            {[
+                              { label: "No Timer", value: 0 },
+                              { label: "15s", value: 15 },
+                              { label: "30s", value: 30 },
+                            ].map((opt) => {
+                              const isSelected = turnDuration === opt.value;
+                              return (
+                                <motion.button
+                                  key={opt.value}
+                                  type="button"
+                                  onClick={() => {
+                                    playSfx("click");
+                                    setTurnDuration(opt.value);
+                                  }}
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  style={{
+                                    padding: isMobile ? "7px 8px" : "8px 12px",
+                                    borderRadius: "8px",
+                                    border: isSelected ? "2px solid #00FFFF" : "1px solid var(--border-color, #2a2a2a)",
+                                    background: isSelected ? "rgba(0, 255, 255, 0.12)" : "rgba(255, 255, 255, 0.03)",
+                                    color: isSelected ? "#00FFFF" : "var(--text-muted, #9ca3af)",
+                                    fontWeight: isSelected ? 700 : 500,
+                                    fontSize: isMobile ? "12px" : "13px",
+                                    cursor: "pointer",
+                                    boxShadow: isSelected ? "0 0 12px rgba(0, 255, 255, 0.35)" : "none",
+                                    textShadow: isSelected ? "0 0 6px #00FFFF" : "none",
+                                    transition: "all 0.15s ease",
+                                  }}
+                                >
+                                  {opt.label}
+                                </motion.button>
+                              );
+                            })}
+                          </div>
                         </div>
                         {/* <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
                           <NeonButton
@@ -762,61 +940,310 @@ export default function LobbyPage() {
     </div>
   )}
 
-  <motion.button
-    type="submit"
-    disabled={isJoining || roomCode.length < 4}
-    whileHover={
-      !isJoining && roomCode.length >= 4
-        ? { scale: 1.03, y: -2 }
-        : {}
-    }
-    whileTap={
-      !isJoining && roomCode.length >= 4
-        ? { scale: 0.97 }
-        : {}
-    }
-    transition={{ duration: 0.2 }}
-    style={{
-      width: "100%",
-      maxWidth: isMobile ? "300px" : "400px",
-      minHeight: isMobile ? "48px" : "56px",
+  <div style={{
+    display: "flex",
+    gap: "10px",
+    width: "100%",
+    maxWidth: isMobile ? "300px" : "400px",
+  }}>
+    <motion.button
+      type="submit"
+      disabled={isJoining || roomCode.length < 4}
+      whileHover={
+        !isJoining && roomCode.length >= 4
+          ? { scale: 1.03, y: -2 }
+          : {}
+      }
+      whileTap={
+        !isJoining && roomCode.length >= 4
+          ? { scale: 0.97 }
+          : {}
+      }
+      transition={{ duration: 0.2 }}
+      style={{
+        flex: 1,
+        minHeight: isMobile ? "48px" : "56px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        border: "2px solid #FF00FF",
+        borderRadius: "14px",
+        background: "transparent",
+        color: "#FF00FF",
+        fontSize: isMobile ? "15px" : "18px",
+        fontWeight: 700,
+        boxShadow: "0 0 15px rgba(255,0,255,.35)",
+        cursor:
+          isJoining || roomCode.length < 4
+            ? "not-allowed"
+            : "pointer",
+        opacity:
+          isJoining || roomCode.length < 4
+            ? 0.5
+            : 1,
+      }}
+    >
+      {isJoining ? (
+        <>
+          <Loader2 className="w-5 h-5 animate-spin" />
+          Joining...
+        </>
+      ) : (
+        "Join Room"
+      )}
+    </motion.button>
 
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-
-      border: "2px solid #FF00FF",
-      borderRadius: "14px",
-      background: "transparent",
-      color: "#FF00FF",
-      fontSize: "18px",
-      fontWeight: 700,
-
-      boxShadow: "0 0 15px rgba(255,0,255,.35)",
-      cursor:
-        isJoining || roomCode.length < 4
-          ? "not-allowed"
-          : "pointer",
-
-      opacity:
-        isJoining || roomCode.length < 4
-          ? 0.5
-          : 1,
-    }}
-  >
-    {isJoining ? (
-      <>
-        <Loader2 className="w-5 h-5 animate-spin" />
-        Joining...
-      </>
-    ) : (
-      "Join Room"
-    )}
-  </motion.button>
+    <motion.button
+      type="button"
+      onClick={() => handleWatchRoom()}
+      disabled={roomCode.length < 4}
+      whileHover={
+        roomCode.length >= 4
+          ? { scale: 1.03, y: -2, boxShadow: "0 0 20px rgba(0, 255, 255, 0.5)" }
+          : {}
+      }
+      whileTap={
+        roomCode.length >= 4
+          ? { scale: 0.97 }
+          : {}
+      }
+      transition={{ duration: 0.2 }}
+      style={{
+        padding: isMobile ? "0 14px" : "0 20px",
+        minHeight: isMobile ? "48px" : "56px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "6px",
+        border: "2px solid #00FFFF",
+        borderRadius: "14px",
+        background: "rgba(0, 255, 255, 0.05)",
+        color: "#00FFFF",
+        fontSize: isMobile ? "14px" : "16px",
+        fontWeight: 700,
+        boxShadow: "0 0 15px rgba(0, 255, 255, 0.35)",
+        cursor: roomCode.length < 4 ? "not-allowed" : "pointer",
+        opacity: roomCode.length < 4 ? 0.5 : 1,
+        whiteSpace: "nowrap",
+      }}
+      title="Watch this match as a spectator"
+    >
+      <Eye style={{ width: isMobile ? "16px" : "18px", height: isMobile ? "16px" : "18px" }} />
+      <span>Watch</span>
+    </motion.button>
+  </div>
 </form>
                   </NeonCard>
                 </motion.div>
               </div>
+
+              {/* Public Rooms List */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                style={{ marginTop: isMobile ? "16px" : "24px" }}
+              >
+                <NeonCard variant="default" glow style={{ width: "100%" }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: isMobile ? "12px" : "16px",
+                    flexWrap: "wrap",
+                    gap: "8px",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <Eye style={{ width: "20px", height: "20px", color: "var(--accent-x, #00FFFF)" }} />
+                      <h2 className="neon-text-cyan" style={{ fontSize: isMobile ? "16px" : "18px", fontWeight: "bold", margin: 0 }}>
+                        Live Matches & Public Rooms
+                      </h2>
+                    </div>
+
+                    <motion.button
+                      type="button"
+                      onClick={() => {
+                        playSfx("click");
+                        setIsLoadingPublicRooms(true);
+                        socket?.emit("get-public-rooms");
+                      }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "5px 12px",
+                        borderRadius: "8px",
+                        backgroundColor: "rgba(255, 255, 255, 0.05)",
+                        border: "1px solid var(--border-color, rgba(255, 255, 255, 0.15))",
+                        color: "var(--text-muted, #9ca3af)",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <RefreshCw style={{ width: "12px", height: "12px", animation: isLoadingPublicRooms ? "spin 1s linear infinite" : "none" }} />
+                      <span>Refresh</span>
+                    </motion.button>
+                  </div>
+
+                  {publicRooms.length === 0 ? (
+                    <div style={{
+                      textAlign: "center",
+                      padding: isMobile ? "24px 12px" : "32px 16px",
+                      backgroundColor: "rgba(255, 255, 255, 0.02)",
+                      borderRadius: "12px",
+                      border: "1px dashed var(--border-color, rgba(255, 255, 255, 0.12))",
+                    }}>
+                      <p style={{ color: "var(--text-muted, #9ca3af)", fontSize: "14px", margin: "0 0 6px" }}>
+                        No public rooms active right now
+                      </p>
+                      <p style={{ color: "var(--text-muted, #6b7280)", fontSize: "12px", margin: 0 }}>
+                        Create a room above to play with friends or wait for opponents!
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{
+                      display: "grid",
+                      gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(310px, 1fr))",
+                      gap: isMobile ? "10px" : "14px",
+                    }}>
+                      {publicRooms.map((room) => {
+                        const isFull = (room.playerCount || 0) >= 2;
+                        const p1 = room.player1?.name || room.creatorName || "Player 1";
+                        const p2 = room.player2?.name || (isFull ? "Player 2" : "Waiting for opponent...");
+                        const watchers = room.spectatorCount || 0;
+
+                        return (
+                          <motion.div
+                            key={room.id || room.code}
+                            whileHover={{ y: -2 }}
+                            style={{
+                              padding: "14px 16px",
+                              borderRadius: "12px",
+                              backgroundColor: "var(--bg-card, rgba(13, 13, 13, 0.8))",
+                              border: "1px solid var(--border-color, rgba(0, 255, 255, 0.18))",
+                              boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "10px",
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <span style={{
+                                fontSize: "16px",
+                                fontWeight: 800,
+                                fontFamily: "monospace",
+                                letterSpacing: "1.5px",
+                                color: "var(--accent-x, #00FFFF)",
+                                textShadow: "0 0 8px rgba(0,255,255,0.4)",
+                              }}>
+                                {room.code}
+                              </span>
+
+                              <div style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                fontSize: "11px",
+                                fontWeight: 600,
+                                color: isFull ? "#FFD700" : "#00FF41",
+                                backgroundColor: isFull ? "rgba(255, 215, 0, 0.12)" : "rgba(0, 255, 65, 0.12)",
+                                padding: "2px 8px",
+                                borderRadius: "999px",
+                                border: `1px solid ${isFull ? "rgba(255, 215, 0, 0.3)" : "rgba(0, 255, 65, 0.3)"}`,
+                              }}>
+                                <span>{room.playerCount}/2 players • {watchers} watching</span>
+                              </div>
+                            </div>
+
+                            <div style={{ fontSize: "13px", color: "var(--text-main, #e5e7eb)", display: "flex", alignItems: "center", gap: "6px" }}>
+                              <span style={{ fontWeight: 600 }}>{p1}</span>
+                              <span style={{ color: "var(--text-muted, #6b7280)", fontSize: "11px" }}>vs</span>
+                              <span style={{
+                                fontWeight: room.player2 ? 600 : 400,
+                                color: room.player2 ? "var(--text-main, #e5e7eb)" : "var(--text-muted, #9ca3af)",
+                                fontStyle: room.player2 ? "normal" : "italic",
+                              }}>
+                                {p2}
+                              </span>
+                            </div>
+
+                            <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+                              {!isFull && (
+                                <motion.button
+                                  type="button"
+                                  onClick={() => {
+                                    playSfx("click");
+                                    router.push(`/room/${room.id || room.code}`);
+                                  }}
+                                  whileHover={{ scale: 1.03 }}
+                                  whileTap={{ scale: 0.97 }}
+                                  style={{
+                                    flex: 1,
+                                    padding: "8px 12px",
+                                    borderRadius: "8px",
+                                    backgroundColor: "rgba(0, 255, 65, 0.12)",
+                                    border: "1.5px solid #00FF41",
+                                    color: "#00FF41",
+                                    fontWeight: 700,
+                                    fontSize: "12px",
+                                    cursor: "pointer",
+                                    boxShadow: "0 0 10px rgba(0, 255, 65, 0.25)",
+                                  }}
+                                >
+                                  Join Game
+                                </motion.button>
+                              )}
+
+                              {(() => {
+                                const isSpecFull = Boolean(room.isSpectatorFull || (typeof room.spectatorCount === "number" && room.spectatorCount >= (room.maxSpectators || 100)));
+                                return (
+                                  <motion.button
+                                    type="button"
+                                    disabled={isSpecFull}
+                                    onClick={() => {
+                                      if (isSpecFull) {
+                                        toast.error("Room is full for spectators");
+                                        return;
+                                      }
+                                      playSfx("click");
+                                      handleWatchRoom(room.id || room.code);
+                                    }}
+                                    whileHover={isSpecFull ? undefined : { scale: 1.03 }}
+                                    whileTap={isSpecFull ? undefined : { scale: 0.97 }}
+                                    style={{
+                                      flex: 1,
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      gap: "6px",
+                                      padding: "8px 12px",
+                                      borderRadius: "8px",
+                                      backgroundColor: isSpecFull ? "rgba(100, 116, 139, 0.12)" : "rgba(0, 255, 255, 0.12)",
+                                      border: isSpecFull ? "1.5px solid rgba(148, 163, 184, 0.3)" : "1.5px solid #00FFFF",
+                                      color: isSpecFull ? "var(--text-muted, #94a3b8)" : "#00FFFF",
+                                      fontWeight: 700,
+                                      fontSize: "12px",
+                                      cursor: isSpecFull ? "not-allowed" : "pointer",
+                                      opacity: isSpecFull ? 0.6 : 1,
+                                      boxShadow: isSpecFull ? "none" : "0 0 10px rgba(0, 255, 255, 0.25)",
+                                    }}
+                                  >
+                                    <Eye style={{ width: "13px", height: "13px" }} />
+                                    <span>{isSpecFull ? "Full" : "Watch"}</span>
+                                  </motion.button>
+                                );
+                              })()}
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </NeonCard>
+              </motion.div>
             </motion.div>
           ) : (
             <motion.div
@@ -849,6 +1276,49 @@ export default function LobbyPage() {
                   }}>HUMAN V/S COMPUTER</h2>
                 </div>
 
+                {/* Pick Symbol */}
+                <div style={{ marginBottom: isMobile ? "14px" : "18px" }}>
+                  <p style={{
+                    color: "#9ca3af",
+                    marginBottom: isMobile ? "6px" : "8px",
+                    fontSize: isMobile ? "13px" : "15px",
+                  }}>Play As</p>
+                  <div style={{
+                    display: "flex",
+                    gap: isMobile ? "8px" : "12px",
+                    justifyContent: "center",
+                  }}>
+                    {(["X", "O"] as const).map((sym) => {
+                      const isSel = playerSymbolAI === sym;
+                      const symColor = sym === "X" ? "var(--accent-x, #00FFFF)" : "var(--accent-o, #FF00FF)";
+                      return (
+                        <button
+                          key={sym}
+                          type="button"
+                          onClick={() => {
+                            playSfx("click");
+                            setPlayerSymbolAI(sym);
+                          }}
+                          style={{
+                            padding: isMobile ? "6px 14px" : "8px 20px",
+                            borderRadius: "8px",
+                            border: `2px solid ${isSel ? symColor : "var(--border-color, #1a1a1a)"}`,
+                            backgroundColor: isSel ? "rgba(255,255,255,0.08)" : "var(--bg-card, transparent)",
+                            color: isSel ? symColor : "var(--text-muted, #666)",
+                            fontWeight: isSel ? "bold" : "normal",
+                            cursor: "pointer",
+                            fontSize: isMobile ? "12px" : "13px",
+                            boxShadow: isSel ? `0 0 12px ${symColor}44` : "none",
+                            transition: "all 0.2s",
+                          }}
+                        >
+                          {sym} {sym === "X" ? "(You move 1st)" : "(AI moves 1st)"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div style={{ marginBottom: isMobile ? "20px" : "24px" }}>
                   <p style={{
                     color: "#9ca3af",
@@ -864,13 +1334,16 @@ export default function LobbyPage() {
                     {(["easy", "medium", "hard"] as Difficulty[]).map((diff) => (
                       <button
                         key={diff}
-                        onClick={() => setDifficulty(diff)}
+                        onClick={() => {
+                          playSfx("click");
+                          setDifficulty(diff);
+                        }}
                         style={{
                           padding: isMobile ? "8px 16px" : "10px 20px",
                           borderRadius: "8px",
-                          border: `2px solid ${difficulty === diff ? "#00FF41" : "#1a1a1a"}`,
-                          backgroundColor: difficulty === diff ? "rgba(0,255,65,0.1)" : "transparent",
-                          color: difficulty === diff ? "#00FF41" : "#666",
+                          border: `2px solid ${difficulty === diff ? "var(--neon-green, #00FF41)" : "var(--border-color, #1a1a1a)"}`,
+                          backgroundColor: difficulty === diff ? "rgba(0,255,65,0.1)" : "var(--bg-card, transparent)",
+                          color: difficulty === diff ? "var(--neon-green, #00FF41)" : "var(--text-muted, #666)",
                           fontWeight: difficulty === diff ? "bold" : "normal",
                           cursor: "pointer",
                           transition: "all 0.3s",
@@ -885,7 +1358,7 @@ export default function LobbyPage() {
                     ))}
                   </div>
                   <p style={{
-                    color: "#6b7280",
+                    color: "var(--text-muted, #6b7280)",
                     fontSize: isMobile ? "12px" : "14px",
                     marginTop: isMobile ? "10px" : "12px",
                   }}>

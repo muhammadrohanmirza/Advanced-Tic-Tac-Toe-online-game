@@ -51,7 +51,7 @@ export const NeonInput = forwardRef<HTMLInputElement, NeonInputProps>(
               fontSize: "14px",
               fontWeight: 500,
               marginBottom: "8px",
-              color: isFocused ? color : "#9ca3af",
+              color: isFocused ? color : "var(--text-muted, #9ca3af)",
               transition: "color 0.3s",
             }}
           >
@@ -66,7 +66,7 @@ export const NeonInput = forwardRef<HTMLInputElement, NeonInputProps>(
                 left: "16px",
                 top: "50%",
                 transform: "translateY(-50%)",
-                color: isFocused ? color : "#6b7280",
+                color: isFocused ? color : "var(--text-muted, #6b7280)",
                 transition: "color 0.3s",
               }}
             >
@@ -79,15 +79,15 @@ export const NeonInput = forwardRef<HTMLInputElement, NeonInputProps>(
             style={{
               width: "100%",
               padding: icon ? "12px 16px 12px 48px" : showPasswordToggle ? "12px 48px 12px 16px" : "12px 16px",
-              backgroundColor: "#0a0a0a",
-              border: `1px solid ${error ? "#FF3131" : "#333"}`,
+              backgroundColor: "var(--bg-input, #0a0a0a)",
+              border: `1px solid ${error ? "#FF3131" : isFocused ? color : "var(--border-color, #333)"}`,
               borderRadius: "8px",
-              color: "white",
+              color: "var(--text-primary, white)",
               outline: "none",
               fontSize: "14px",
               transition: "border-color 0.3s, box-shadow 0.3s",
               boxShadow: isFocused && !error ? `0 0 12px ${color}44` : "none",
-              borderColor: isFocused && !error ? color : error ? "#FF3131" : "#333",
+              borderColor: isFocused && !error ? color : error ? "#FF3131" : "var(--border-color, #333)",
               ...style,
             }}
             className={className}

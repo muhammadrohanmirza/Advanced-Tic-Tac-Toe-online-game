@@ -9,21 +9,64 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  scores    Score[]
-  createdAt DateTime @default(now())
+  id            String              @id @default(cuid())
+  name          String
+  email         String              @unique
+  password      String
+  emailVerified DateTime?
+  scores        Score[]
+  games         Game[]
+  tokens        VerificationToken[]
+  createdAt     DateTime            @default(now())
 }
 
 model Score {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game        String
+  result      String
+  opponent    String?
+  gameRecords Game[]
+  createdAt   DateTime @default(now())
+
+  @@index([game])
+}
+
+model Game {
+  id          String   @id @default(cuid())
+  mode        String
+  playerX     String
+  playerO     String
+  playerXId   String?
+  playerOId   String?
+  winner      String?
+  winningLine String?
+  moves       Json
+  createdAt   DateTime @default(now())
+
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scoreId     String?
+  score       Score?   @relation(fields: [scoreId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([playerXId])
+  @@index([playerOId])
+  @@index([mode])
+  @@index([createdAt])
+}
+
+model VerificationToken {
   id        String   @id @default(cuid())
+  token     String   @unique
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  game      String
-  result    String
-  opponent  String?
+  type      String
+  expiresAt DateTime
   createdAt DateTime @default(now())
-  @@index([game])
+
+  @@index([userId])
+  @@index([token])
+  @@index([type])
 }

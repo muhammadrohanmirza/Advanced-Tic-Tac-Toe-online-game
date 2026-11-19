@@ -17,8 +17,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body style={{
-        backgroundColor: '#050505',
-        color: 'white',
+        backgroundColor: 'var(--bg-primary, #050505)',
+        color: 'var(--text-primary, white)',
         margin: 0,
         padding: 0,
         minHeight: '100vh',

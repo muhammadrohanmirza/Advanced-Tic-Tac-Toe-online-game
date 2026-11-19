@@ -53,7 +53,7 @@ export function UserAvatar({ userName, userEmail }: UserAvatarProps) {
         <div>
           <p style={{
             fontWeight: 600,
-            color: "#ffffff",
+            color: "var(--text-primary, #ffffff)",
             margin: 0,
             fontSize: "14px",
             whiteSpace: "nowrap",
@@ -62,7 +62,7 @@ export function UserAvatar({ userName, userEmail }: UserAvatarProps) {
           </p>
           <p style={{
             fontSize: "12px",
-            color: "#9ca3af",
+            color: "var(--text-muted, #9ca3af)",
             margin: "2px 0 0",
             whiteSpace: "nowrap",
           }}>

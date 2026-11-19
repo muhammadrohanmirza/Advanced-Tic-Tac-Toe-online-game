@@ -21,13 +21,13 @@ export function NeonCard({
   hover = false,
 }: NeonCardProps) {
   const variantColors: Record<string, { border: string; bg: string; shadow: string }> = {
-    default: { border: "#1a1a1a", bg: "rgba(13,13,13,0.8)", shadow: "none" },
-    cyan: { border: "#00FFFF44", bg: "rgba(0,255,255,0.05)", shadow: "0 0 20px rgba(0,255,255,0.2)" },
-    pink: { border: "#FF00FF44", bg: "rgba(255,0,255,0.05)", shadow: "0 0 20px rgba(255,0,255,0.2)" },
-    green: { border: "#00FF4144", bg: "rgba(0,255,65,0.05)", shadow: "0 0 20px rgba(0,255,65,0.2)" },
-    yellow: { border: "#FFD70044", bg: "rgba(255,215,0,0.05)", shadow: "0 0 20px rgba(255,215,0,0.2)" },
-    red: { border: "#FF313144", bg: "rgba(255,49,49,0.05)", shadow: "0 0 20px rgba(255,49,49,0.2)" },
-    purple: { border: "#BF00FF44", bg: "rgba(191,0,255,0.05)", shadow: "0 0 20px rgba(191,0,255,0.2)" },
+    default: { border: "var(--border-color, #1a1a1a)", bg: "var(--bg-card, rgba(13,13,13,0.8))", shadow: "none" },
+    cyan: { border: "var(--accent-x, #00FFFF)", bg: "var(--bg-card, rgba(13,13,13,0.8))", shadow: "0 0 20px rgba(0,255,255,0.15)" },
+    pink: { border: "var(--accent-o, #FF00FF)", bg: "var(--bg-card, rgba(13,13,13,0.8))", shadow: "0 0 20px rgba(255,0,255,0.15)" },
+    green: { border: "#00FF4144", bg: "var(--bg-card, rgba(13,13,13,0.8))", shadow: "0 0 20px rgba(0,255,65,0.15)" },
+    yellow: { border: "#FFD70044", bg: "var(--bg-card, rgba(13,13,13,0.8))", shadow: "0 0 20px rgba(255,215,0,0.15)" },
+    red: { border: "#FF313144", bg: "var(--bg-card, rgba(13,13,13,0.8))", shadow: "0 0 20px rgba(255,49,49,0.15)" },
+    purple: { border: "#BF00FF44", bg: "var(--bg-card, rgba(13,13,13,0.8))", shadow: "0 0 20px rgba(191,0,255,0.15)" },
   };
 
   const colors = variantColors[variant];

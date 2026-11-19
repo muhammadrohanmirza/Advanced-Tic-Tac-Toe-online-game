@@ -12,6 +12,7 @@ import { User, Mail, Lock } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import * as Progress from "@radix-ui/react-progress";
 import { useWindowSize } from "@/hooks/useWindowSize";
+import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher";
 
 export default function SignupPage() {
   const { isMobile, isTablet, isDesktop } = useWindowSize();
@@ -22,9 +23,14 @@ export default function SignupPage() {
       display: "flex",
       position: "relative",
       overflow: "hidden",
-      backgroundColor: "#050505",
+      backgroundColor: "var(--bg-primary, #050505)",
     }}>
       <Toaster position="top-right" />
+
+      {/* Floating Theme Switcher */}
+      <div style={{ position: "absolute", top: 16, right: 16, zIndex: 50 }}>
+        <ThemeSwitcher compact={isMobile} align="right" />
+      </div>
 
       {/* Left Side - Animated (Hidden on mobile) */}
       {!isMobile && (
@@ -33,7 +39,7 @@ export default function SignupPage() {
           position: "relative",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "rgba(13,13,13,0.5)",
+          backgroundColor: "var(--bg-card, rgba(13,13,13,0.5))",
           display: isDesktop ? "flex" : isTablet ? "flex" : "none",
         }}>
           <div className="grid-bg" style={{ position: "absolute", inset: 0, opacity: 0.2 }} />
@@ -54,7 +60,7 @@ export default function SignupPage() {
               <span className="neon-text-cyan">ACCOUNT</span>
             </h1>
             <p style={{
-              color: "#9ca3af",
+              color: "var(--text-muted, #9ca3af)",
               fontSize: isTablet ? "14px" : "18px",
               padding: isTablet ? "0 16px" : "0",
             }}>Join the arena and start playing</p>
@@ -134,17 +140,18 @@ function SignupForm({ isMobile }: { isMobile: boolean }) {
         return;
       }
 
-      toast.success("Account created!");
+      toast.success("Account created successfully!");
+      const signInResult = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
 
-      const result = await signIn("credentials", { email, password, redirect: false });
-      if (result?.error) {
-        setError("Account created but sign in failed");
-        setIsLoading(false);
-        return;
+      if (signInResult?.ok) {
+        router.push("/lobby");
+      } else {
+        router.push("/login");
       }
-
-      toast.success("Welcome aboard!");
-      router.push("/lobby");
     } catch (err) {
       setError("Something went wrong");
       toast.error("Something went wrong");
@@ -160,7 +167,7 @@ function SignupForm({ isMobile }: { isMobile: boolean }) {
           fontWeight: "bold",
           marginBottom: "8px",
         }}>Create Account</h1>
-        <p style={{ color: "#9ca3af", fontSize: isMobile ? "13px" : "14px" }}>
+        <p style={{ color: "var(--text-muted, #9ca3af)", fontSize: isMobile ? "13px" : "14px" }}>
           Join the Tic-Tac-Toe arena
         </p>
       </div>
@@ -207,14 +214,14 @@ function SignupForm({ isMobile }: { isMobile: boolean }) {
         {password && (
           <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? "6px" : "8px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: isMobile ? "11px" : "12px" }}>
-              <span style={{ color: "#9ca3af" }}>Password Strength</span>
+              <span style={{ color: "var(--text-muted, #9ca3af)" }}>Password Strength</span>
               <span style={{ color: passwordStrength.color }}>{passwordStrength.label}</span>
             </div>
             <Progress.Root
               style={{
                 position: "relative",
                 height: isMobile ? "6px" : "8px",
-                backgroundColor: "#1a1a1a",
+                backgroundColor: "var(--border-color, #1a1a1a)",
                 borderRadius: "9999px",
                 overflow: "hidden",
               }}
@@ -273,7 +280,7 @@ function SignupForm({ isMobile }: { isMobile: boolean }) {
         marginTop: isMobile ? "24px" : "32px",
         textAlign: "center",
       }}>
-        <p style={{ color: "#9ca3af", fontSize: isMobile ? "13px" : "14px" }}>
+        <p style={{ color: "var(--text-muted, #9ca3af)", fontSize: isMobile ? "13px" : "14px" }}>
           Already have an account?{" "}
           <Link href="/login" className="neon-text-cyan" style={{ fontWeight: 600 }}>
             Sign In

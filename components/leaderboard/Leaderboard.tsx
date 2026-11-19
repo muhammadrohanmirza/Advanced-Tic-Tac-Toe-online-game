@@ -24,7 +24,7 @@ export function Leaderboard({ leaderboard, isLoading }: LeaderboardProps) {
     if (rank === 1) return { backgroundColor: "rgba(255,215,0,0.1)", borderColor: "#FFD700", boxShadow: "0 0 20px rgba(255,215,0,0.2)" };
     if (rank === 2) return { backgroundColor: "rgba(156,163,175,0.1)", borderColor: "#9ca3af" };
     if (rank === 3) return { backgroundColor: "rgba(180,83,9,0.1)", borderColor: "#b45309" };
-    return { backgroundColor: "rgba(13,13,13,0.5)", borderColor: "#1a1a1a" };
+    return { backgroundColor: "var(--bg-card, rgba(13,13,13,0.5))", borderColor: "var(--border-color, #1a1a1a)" };
   };
 
   if (isLoading) {
@@ -36,7 +36,7 @@ export function Leaderboard({ leaderboard, isLoading }: LeaderboardProps) {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           {[...Array(5)].map((_, i) => (
-            <div key={i} style={{ height: "80px", backgroundColor: "rgba(13,13,13,0.5)", borderRadius: "12px", animation: "pulse 2s infinite" }} />
+            <div key={i} style={{ height: "80px", backgroundColor: "var(--bg-card, rgba(13,13,13,0.5))", borderRadius: "12px", animation: "pulse 2s infinite" }} />
           ))}
         </div>
       </NeonCard>
@@ -81,7 +81,7 @@ export function Leaderboard({ leaderboard, isLoading }: LeaderboardProps) {
 
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{entry.userName}</p>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "12px", color: "#9ca3af", marginTop: "4px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "12px", color: "var(--text-muted, #9ca3af)", marginTop: "4px" }}>
                   <span>{entry.totalGames} games</span>
                   <span>•</span>
                   <span style={{ color: "#00FF41" }}>{entry.wins} wins</span>
@@ -92,7 +92,7 @@ export function Leaderboard({ leaderboard, isLoading }: LeaderboardProps) {
                 <motion.p className="neon-text-green" style={{ fontSize: "24px", fontWeight: "bold" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                   <CountUp end={entry.winRate} duration={1.5} suffix="%" useEasing />
                 </motion.p>
-                <p style={{ fontSize: "12px", color: "#6b7280" }}>win rate</p>
+                <p style={{ fontSize: "12px", color: "var(--text-muted, #6b7280)" }}>win rate</p>
               </div>
             </motion.div>
           ))}

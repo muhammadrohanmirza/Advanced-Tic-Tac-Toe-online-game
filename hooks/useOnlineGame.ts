@@ -84,22 +84,23 @@ export function useOnlineGame(
 
     socket.on("room-created", (createdRoom: Room) => {
       setRoom(createdRoom);
-      setGameStatus(createdRoom.gameStatus);
+      setGameStatus(createdRoom.gameStatus || (createdRoom.status as any) || "waiting");
       setPlayers({
-        playerX: createdRoom.playerX,
-        playerO: createdRoom.playerO,
+        playerX: createdRoom.playerX || null,
+        playerO: createdRoom.playerO || null,
       });
       setIsLoading(false);
     });
 
     socket.on("room-joined", (joinedRoom: Room) => {
       setRoom(joinedRoom);
-      setBoard(joinedRoom.board);
+      const normalizedBoard = (joinedRoom.board || []).map((cell: any) => cell === "" ? null : (cell as CellValue));
+      setBoard(normalizedBoard);
       setCurrentTurn(joinedRoom.currentTurn);
-      setGameStatus(joinedRoom.gameStatus);
+      setGameStatus(joinedRoom.gameStatus || (joinedRoom.status as any) || "playing");
       setPlayers({
-        playerX: joinedRoom.playerX,
-        playerO: joinedRoom.playerO,
+        playerX: joinedRoom.playerX || null,
+        playerO: joinedRoom.playerO || null,
       });
       setIsLoading(false);
     });
@@ -107,16 +108,18 @@ export function useOnlineGame(
     socket.on("player-joined", (data: PlayerJoinedData) => {
       setRoom(data.room);
       setPlayers({
-        playerX: data.room.playerX,
-        playerO: data.room.playerO,
+        playerX: data.room.playerX || null,
+        playerO: data.room.playerO || null,
       });
-      setGameStatus(data.room.gameStatus);
-      setBoard(data.room.board);
+      setGameStatus(data.room.gameStatus || (data.room.status as any) || "playing");
+      const normalizedBoard = (data.room.board || []).map((cell: any) => cell === "" ? null : (cell as CellValue));
+      setBoard(normalizedBoard);
       setCurrentTurn(data.room.currentTurn);
     });
 
     socket.on("board-updated", (data: BoardUpdatedData) => {
-      setBoard(data.board);
+      const normalizedBoard = (data.board || []).map((cell: any) => cell === "" ? null : (cell as CellValue));
+      setBoard(normalizedBoard);
       setCurrentTurn(data.currentTurn);
       setLastMove(data.lastMove);
       setSecondsLeft(30);
@@ -126,7 +129,7 @@ export function useOnlineGame(
       setGameStatus("finished");
       setWinner(data.winner as TurnPlayer | "draw");
       setWinningLine(data.winningLine);
-      setRoom(data.room);
+      setRoom(data.room || null);
     });
 
     socket.on("new-message", (message: ChatMessage) => {
@@ -140,9 +143,10 @@ export function useOnlineGame(
 
     socket.on("rematch-started", (newRoom: Room) => {
       setRoom(newRoom);
-      setBoard(newRoom.board);
+      const normalizedBoard = (newRoom.board || []).map((cell: any) => cell === "" ? null : (cell as CellValue));
+      setBoard(normalizedBoard);
       setCurrentTurn(newRoom.currentTurn);
-      setGameStatus(newRoom.gameStatus);
+      setGameStatus(newRoom.gameStatus || (newRoom.status as any) || "playing");
       setWinner(null);
       setWinningLine(null);
       setLastMove(null);
@@ -170,7 +174,11 @@ export function useOnlineGame(
     });
 
     socket.on("timer-update", (data: TimerUpdateData) => {
-      setSecondsLeft(data.secondsLeft);
+      if (typeof data.secondsLeft === "number") {
+        setSecondsLeft(data.secondsLeft);
+      } else if (data.turnDeadline) {
+        setSecondsLeft(Math.max(0, Math.ceil((data.turnDeadline - Date.now()) / 1000)));
+      }
     });
 
     socket.on("turn-timeout", (data: TurnTimeoutData) => {

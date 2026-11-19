@@ -19,21 +19,40 @@ export interface Player {
   isOnline: boolean;
 }
 
+export interface Spectator {
+  id: string;
+  name: string;
+  socketId?: string;
+  socketIds?: string[];
+  joinedAt: number;
+}
+
 export interface Room {
   id: string;
   code: string;
-  creatorId: string;
-  creatorName: string;
-  playerX: Player | null;
-  playerO: Player | null;
+  creatorId?: string;
+  creatorName?: string;
+  player1?: { id: string; name: string; socketId?: string; symbol: TurnPlayer } | null;
+  player2?: { id: string; name: string; socketId?: string; symbol: TurnPlayer } | null;
+  playerX?: Player | null;
+  playerO?: Player | null;
+  spectators?: Spectator[];
   isPublic: boolean;
-  board: CellValue[];
+  board: CellValue[] | string[];
   currentTurn: TurnPlayer;
-  gameStatus: "waiting" | "playing" | "finished";
-  winner: TurnPlayer | null;
+  gameStatus?: "waiting" | "playing" | "finished";
+  status?: "waiting" | "playing" | "finished";
+  winner: TurnPlayer | string | null;
   winningLine: number[] | null;
   rematchRequestedBy: string | null;
-  createdAt: number;
+  createdAt: number | Date;
+  turnDuration?: number;
+  turnDeadline?: number | null;
+  turnStartTime?: number | null;
+  timeoutCountX?: number;
+  timeoutCountO?: number;
+  messages?: ChatMessage[];
+  call?: CallState;
 }
 
 export interface MoveResult {
@@ -54,6 +73,20 @@ export interface ChatMessage {
   senderId: string;
   timestamp: number;
   isSystem?: boolean;
+  role?: "player" | "spectator";
+}
+
+export const ALLOWED_REACTIONS = ["👍", "😂", "😮", "😡", "❤️", "🔥", "GG"] as const;
+export type AllowedReaction = (typeof ALLOWED_REACTIONS)[number];
+
+export interface ReactionPayload {
+  id: string;
+  roomId: string;
+  reaction: AllowedReaction;
+  senderId: string;
+  senderName: string;
+  timestamp: number;
+  role?: "player" | "spectator";
 }
 
 export interface LeaderboardEntry {
@@ -70,4 +103,53 @@ export interface OnlineStats {
   losses: number;
   draws: number;
   totalGames: number;
+}
+
+export type CallRole = "player" | "spectator";
+export type CallStatus = "idle" | "ringing" | "active";
+export type SpectatorCallSetting = "ask" | "allow" | "off";
+export type SpectatorCallPermission = SpectatorCallSetting | "Ask" | "Allow" | "Off";
+
+export interface CallParticipant {
+  userId: string;
+  socketId: string;
+  name: string;
+  role: CallRole;
+  micOn: boolean;
+  cameraOn: boolean;
+  mutedByModerator: boolean;
+  joinedAt: number;
+}
+
+export interface CallState {
+  status: CallStatus;
+  active: boolean;
+  startedBy: string | null;
+  callerName?: string | null;
+  withVideo?: boolean;
+  spectatorCallSetting: SpectatorCallSetting;
+  spectatorsAllowed?: SpectatorCallPermission;
+  participants: CallParticipant[];
+}
+
+export interface GameMove {
+  step: number;
+  player: "X" | "O";
+  cellIndex: number;
+  timestamp: number;
+}
+
+export interface GameRecord {
+  id: string;
+  mode: string;
+  playerX: string;
+  playerO: string;
+  playerXId?: string | null;
+  playerOId?: string | null;
+  winner?: string | null;
+  winningLine?: string | null;
+  moves: GameMove[];
+  createdAt: string | Date;
+  userId?: string | null;
+  scoreId?: string | null;
 }

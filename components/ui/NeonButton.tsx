@@ -3,7 +3,7 @@
 import React from "react";
 import { motion, HTMLMotionProps } from "framer-motion";
 import { Loader2 } from "lucide-react";
-
+import { useSound } from "@/hooks/useSound";
 
 interface NeonButtonProps extends HTMLMotionProps<"button"> {
   variant?: "cyan" | "pink" | "green" | "yellow" | "red" | "purple" | "default";
@@ -23,8 +23,17 @@ export function NeonButton({
   disabled,
   fullWidth = false,
   glow = true,
+  onClick,
   ...props
 }: NeonButtonProps) {
+  const { playSfx } = useSound();
+
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!disabled && !isLoading) {
+      playSfx("click");
+      onClick?.(e);
+    }
+  };
   const baseStyles: React.CSSProperties = {
     background: "transparent",
     border: "2px solid",
@@ -48,7 +57,7 @@ export function NeonButton({
   };
 
   const variantStyles: Record<string, { color: string; hoverBg: string; shadow: string }> = {
-    default: { color: "#ffffff", hoverBg: "rgba(255,255,255,0.1)", shadow: "0 0 10px rgba(255,255,255,0.2)" },
+    default: { color: "var(--text-primary, #ffffff)", hoverBg: "rgba(128,128,128,0.1)", shadow: "0 0 10px rgba(128,128,128,0.2)" },
     cyan: { color: "#00FFFF", hoverBg: "rgba(0,255,255,0.1)", shadow: "0 0 15px rgba(0,255,255,0.3)" },
     pink: { color: "#FF00FF", hoverBg: "rgba(255,0,255,0.1)", shadow: "0 0 15px rgba(255,0,255,0.3)" },
     green: { color: "#00FF41", hoverBg: "rgba(0,255,65,0.1)", shadow: "0 0 15px rgba(0,255,65,0.3)" },
@@ -87,6 +96,7 @@ export function NeonButton({
         e.currentTarget.style.transform = "translateY(0)";
       }}
       {...props}
+      onClick={handleClick}
     >
       {isLoading ? (
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>

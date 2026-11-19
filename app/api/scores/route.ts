@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 const saveScoreSchema = z.object({
+  game: z.string().optional(),
   result: z.enum(["win", "loss", "draw"]),
   opponent: z.string().optional(),
 });
@@ -21,12 +22,12 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { result, opponent } = saveScoreSchema.parse(body);
+    const { game, result, opponent } = saveScoreSchema.parse(body);
 
     await prisma.score.create({
       data: {
         userId: session.user.id,
-        game: "tictactoe",
+        game: game || "tictactoe",
         result,
         opponent: opponent || null,
       },
