@@ -2,102 +2,272 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { NeonCard } from "@/components/ui/NeonCard";
 import { LeaderboardEntry } from "@/types/game";
 import CountUp from "react-countup";
-import { Trophy, Medal, Award, Crown } from "lucide-react";
+import { Trophy, ArrowLeft } from "lucide-react";
+import { RoundIconButton } from "@/components/ui/RoundIconButton";
 
 interface LeaderboardProps {
   leaderboard: LeaderboardEntry[];
   isLoading: boolean;
+  onBack?: () => void;
 }
 
-export function Leaderboard({ leaderboard, isLoading }: LeaderboardProps) {
-  const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Crown style={{ width: "24px", height: "24px", color: "#FFD700" }} />;
-    if (rank === 2) return <Medal style={{ width: "24px", height: "24px", color: "#9ca3af" }} />;
-    if (rank === 3) return <Award style={{ width: "24px", height: "24px", color: "#b45309" }} />;
-    return null;
+export function Leaderboard({ leaderboard, isLoading, onBack }: LeaderboardProps) {
+  const getRankBadge = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return {
+          bg: "linear-gradient(180deg, #FCD34D 0%, #F59E0B 100%)",
+          color: "#FFFFFF",
+          border: "2px solid #FDE68A",
+          shadow: "0 2px 6px rgba(245, 158, 11, 0.4)",
+        };
+      case 2:
+        return {
+          bg: "linear-gradient(180deg, #CBD5E1 0%, #94A3B8 100%)",
+          color: "#FFFFFF",
+          border: "2px solid #E2E8F0",
+          shadow: "0 2px 6px rgba(148, 163, 184, 0.4)",
+        };
+      case 3:
+        return {
+          bg: "linear-gradient(180deg, #FDBA74 0%, #EA580C 100%)",
+          color: "#FFFFFF",
+          border: "2px solid #FED7AA",
+          shadow: "0 2px 6px rgba(234, 88, 12, 0.4)",
+        };
+      default:
+        return {
+          bg: "#E2E8F0",
+          color: "#475569",
+          border: "1.5px solid #CBD5E1",
+          shadow: "none",
+        };
+    }
   };
-
-  const getRankStyle = (rank: number) => {
-    if (rank === 1) return { backgroundColor: "rgba(255,215,0,0.1)", borderColor: "#FFD700", boxShadow: "0 0 20px rgba(255,215,0,0.2)" };
-    if (rank === 2) return { backgroundColor: "rgba(156,163,175,0.1)", borderColor: "#9ca3af" };
-    if (rank === 3) return { backgroundColor: "rgba(180,83,9,0.1)", borderColor: "#b45309" };
-    return { backgroundColor: "var(--bg-card, rgba(13,13,13,0.5))", borderColor: "var(--border-color, #1a1a1a)" };
-  };
-
-  if (isLoading) {
-    return (
-      <NeonCard variant="green" glow>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "24px" }}>
-          <Trophy style={{ width: "24px", height: "24px", color: "#00FF41" }} />
-          <h2 className="neon-text-green" style={{ fontSize: "20px", fontWeight: "bold" }}>🏆 Leaderboard</h2>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          {[...Array(5)].map((_, i) => (
-            <div key={i} style={{ height: "80px", backgroundColor: "var(--bg-card, rgba(13,13,13,0.5))", borderRadius: "12px", animation: "pulse 2s infinite" }} />
-          ))}
-        </div>
-      </NeonCard>
-    );
-  }
 
   return (
-    <NeonCard variant="green" glow>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "24px" }}>
-        <Trophy style={{ width: "24px", height: "24px", color: "#00FF41" }} />
-        <h2 className="neon-text-green" style={{ fontSize: "20px", fontWeight: "bold" }}>🏆 Top Players</h2>
+    <div
+      className="game-card-light"
+      style={{
+        width: "100%",
+        maxWidth: "520px",
+        margin: "0 auto",
+        padding: "clamp(18px, 4vw, 28px)",
+        borderRadius: "clamp(22px, 5vw, 30px)",
+        boxShadow: "0 20px 45px rgba(0, 15, 50, 0.35)",
+        position: "relative",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          position: "relative",
+          marginBottom: "clamp(16px, 3.5vw, 24px)",
+          minHeight: "44px",
+        }}
+      >
+        {onBack && (
+          <div style={{ position: "absolute", left: 0 }}>
+            <RoundIconButton
+              variant="blue"
+              size={40}
+              ariaLabel="Go back"
+              onClick={onBack}
+            >
+              <ArrowLeft style={{ width: "20px", height: "20px" }} />
+            </RoundIconButton>
+          </div>
+        )}
+
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <Trophy
+            style={{
+              width: "28px",
+              height: "28px",
+              color: "#F59E0B",
+              filter: "drop-shadow(0 2px 4px rgba(245, 158, 11, 0.4))",
+            }}
+          />
+          <h2
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: "clamp(20px, 4vw, 26px)",
+              fontWeight: 700,
+              color: "#0F172A",
+              letterSpacing: "0.5px",
+            }}
+          >
+            Leaderboard
+          </h2>
+        </div>
       </div>
 
-      {leaderboard.length === 0 ? (
-        <motion.div style={{ textAlign: "center", padding: "48px 24px" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <Trophy style={{ width: "64px", height: "64px", color: "#374151", margin: "0 auto 16px" }} />
-          <p style={{ color: "#9ca3af", marginBottom: "8px" }}>No games played yet</p>
-          <p style={{ color: "#6b7280", fontSize: "14px" }}>Be the first to claim the top spot!</p>
+      {/* Content */}
+      {isLoading ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              style={{
+                height: "56px",
+                backgroundColor: "#F1F5F9",
+                borderRadius: "16px",
+                animation: "pulse 1.8s infinite ease-in-out",
+              }}
+            />
+          ))}
+        </div>
+      ) : leaderboard.length === 0 ? (
+        <motion.div
+          style={{ textAlign: "center", padding: "40px 16px" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          <Trophy
+            style={{
+              width: "56px",
+              height: "56px",
+              color: "#CBD5E1",
+              margin: "0 auto 12px",
+            }}
+          />
+          <p
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: "16px",
+              fontWeight: 600,
+              color: "#334155",
+              marginBottom: "4px",
+            }}
+          >
+            No matches recorded yet
+          </p>
+          <p style={{ color: "#64748B", fontSize: "14px" }}>
+            Play a game to take the #1 spot!
+          </p>
         </motion.div>
       ) : (
-        <motion.div style={{ display: "flex", flexDirection: "column", gap: "12px", maxHeight: "384px", overflowY: "auto" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          {leaderboard.map((entry, index) => (
-            <motion.div
-              key={entry.userId}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "16px",
-                padding: "16px",
-                borderRadius: "12px",
-                border: "1px solid",
-                ...getRankStyle(entry.rank),
-              }}
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
-              whileHover={{ scale: 1.02, x: 5 }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "40px" }}>
-                {getRankIcon(entry.rank) || <span style={{ fontSize: "18px", fontWeight: "bold", color: "#9ca3af" }}>#{entry.rank}</span>}
-              </div>
+        <motion.div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+            maxHeight: "clamp(340px, 50vh, 480px)",
+            overflowY: "auto",
+            paddingRight: "4px",
+          }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          {leaderboard.map((entry, index) => {
+            const badge = getRankBadge(entry.rank);
+            const isTop3 = entry.rank <= 3;
 
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{entry.userName}</p>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "12px", color: "var(--text-muted, #9ca3af)", marginTop: "4px" }}>
-                  <span>{entry.totalGames} games</span>
-                  <span>•</span>
-                  <span style={{ color: "#00FF41" }}>{entry.wins} wins</span>
+            return (
+              <motion.div
+                key={entry.userId}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "10px 14px",
+                  borderRadius: "16px",
+                  backgroundColor: isTop3
+                    ? index === 0
+                      ? "rgba(254, 243, 199, 0.55)"
+                      : "rgba(241, 245, 249, 0.7)"
+                    : "#F8FAFC",
+                  border: isTop3 && index === 0 ? "1.5px solid #FDE68A" : "1px solid #E2E8F0",
+                  transition: "transform 0.15s ease",
+                }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.04 }}
+                whileHover={{ scale: 1.015 }}
+              >
+                {/* Left: Medal Rank + Name */}
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
+                  <div
+                    style={{
+                      width: "32px",
+                      height: "32px",
+                      minWidth: "32px",
+                      borderRadius: "50%",
+                      background: badge.bg,
+                      color: badge.color,
+                      border: badge.border,
+                      boxShadow: badge.shadow,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontFamily: "var(--font-display)",
+                      fontWeight: 700,
+                      fontSize: "14px",
+                    }}
+                  >
+                    {entry.rank}
+                  </div>
+
+                  <div style={{ minWidth: 0 }}>
+                    <p
+                      style={{
+                        fontFamily: "var(--font-display)",
+                        fontWeight: 700,
+                        fontSize: "15px",
+                        color: "#0F172A",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {entry.userName}
+                    </p>
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        color: "#64748B",
+                        fontFamily: "var(--font-body)",
+                      }}
+                    >
+                      {entry.wins} {entry.wins === 1 ? "win" : "wins"} ({entry.totalGames} played)
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              <div style={{ textAlign: "right" }}>
-                <motion.p className="neon-text-green" style={{ fontSize: "24px", fontWeight: "bold" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  <CountUp end={entry.winRate} duration={1.5} suffix="%" useEasing />
-                </motion.p>
-                <p style={{ fontSize: "12px", color: "var(--text-muted, #6b7280)" }}>win rate</p>
-              </div>
-            </motion.div>
-          ))}
+                {/* Right: Score/Win rate aligned right */}
+                <div style={{ textAlign: "right", flexShrink: 0, paddingLeft: "12px" }}>
+                  <span
+                    style={{
+                      fontFamily: "var(--font-display)",
+                      fontSize: "18px",
+                      fontWeight: 800,
+                      color: "#0F172A",
+                    }}
+                  >
+                    <CountUp end={entry.wins} duration={1.2} />
+                  </span>
+                  <p
+                    style={{
+                      fontSize: "11px",
+                      color: "#64748B",
+                      fontWeight: 600,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    Score
+                  </p>
+                </div>
+              </motion.div>
+            );
+          })}
         </motion.div>
       )}
-    </NeonCard>
+    </div>
   );
 }

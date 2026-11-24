@@ -17,7 +17,7 @@ A modern real-time Tic-Tac-Toe web app built with Next.js, Socket.IO, Prisma, an
 - Interactive replay player with play/pause, step forward/backward, scrubber slider, speed controls (0.5x, 1x, 2x), move timeline, and winning line highlights
 - Match history ("My Games") page with filters, search, and replay links
 - Spectator mode: 3rd+ users can watch live matches with synchronized board & timer updates, spectator counts, and view-only chat
-- Authoritative server per-turn timer (No timer, 15s, 30s) with auto-moves and 3-timeout forfeit
+- Authoritative server per-turn timer (No Limit, 15s, 30s, 45s) with auto-moves and 3-timeout forfeit
 - Modular AI opponent (Easy, Medium, and unbeatable Hard with Minimax & Alpha-Beta pruning)
 - Choice to play as X or O (AI moves first if user is O)
 - Private and public game rooms

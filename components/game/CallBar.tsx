@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useWindowSize } from "@/hooks/useWindowSize";
 import {
   Mic,
   MicOff,
@@ -73,6 +74,8 @@ export function CallBar({
   isMobile,
 }: CallBarProps) {
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const { width } = useWindowSize();
+  const isUnder400 = width < 400;
 
   const participantCount = callState.participants.length;
   const isSpectatorsAllowed = callState.spectatorsAllowed !== "Off";
@@ -100,6 +103,7 @@ export function CallBar({
         width: "100%",
         maxWidth: isMobile ? "100%" : "520px",
         margin: "0 auto 12px auto",
+        boxSizing: "border-box",
       }}
     >
       {/* Audio blocked notification banner */}
@@ -148,14 +152,16 @@ export function CallBar({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: isMobile ? "8px 10px" : "8px 14px",
-          borderRadius: "14px",
-          backgroundColor: "var(--bg-card, rgba(13,13,13,0.85))",
-          border: `1px solid ${
-            callState.active ? "var(--accent-x, #00FFFF)" : "var(--border-color, #222)"
+          padding: isMobile ? "8px 12px" : "10px 16px",
+          borderRadius: "18px",
+          backgroundColor: "rgba(15, 23, 42, 0.8)",
+          border: `1.5px solid ${
+            callState.active ? "rgba(59, 130, 246, 0.5)" : "rgba(255, 255, 255, 0.1)"
           }`,
-          boxShadow: callState.active ? "0 0 15px rgba(0,255,255,0.2)" : "none",
-          backdropFilter: "blur(8px)",
+          boxShadow: callState.active
+            ? "0 4px 16px rgba(59, 130, 246, 0.25), inset 0 1px 0 rgba(255,255,255,0.1)"
+            : "0 4px 16px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06)",
+          backdropFilter: "blur(12px)",
           flexWrap: "wrap",
           gap: "8px",
           position: "relative",
@@ -255,7 +261,7 @@ export function CallBar({
         </div>
 
         {/* Right: Controls based on state */}
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" }}>
           {/* STATE 1: Caller is Ringing Opponent */}
           {isCallerRinging ? (
             <>
@@ -311,6 +317,7 @@ export function CallBar({
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
+                  justifyContent: "center",
                   gap: "6px",
                   padding: "6px 12px",
                   borderRadius: "10px",
@@ -321,10 +328,12 @@ export function CallBar({
                   fontWeight: 700,
                   cursor: "pointer",
                   boxShadow: "0 0 12px rgba(255, 49, 49, 0.4)",
+                  minHeight: "44px",
+                  boxSizing: "border-box",
                 }}
               >
                 <PhoneOff size={14} />
-                <span>Cancel Call</span>
+                <span>{isUnder400 ? "Cancel" : "Cancel Call"}</span>
               </motion.button>
             </>
           ) : isUserInCall ? (
@@ -411,6 +420,7 @@ export function CallBar({
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
+                  justifyContent: "center",
                   gap: "6px",
                   padding: "6px 12px",
                   borderRadius: "10px",
@@ -421,10 +431,12 @@ export function CallBar({
                   fontWeight: 700,
                   cursor: "pointer",
                   boxShadow: "0 0 12px rgba(255, 49, 49, 0.4)",
+                  minHeight: "44px",
+                  boxSizing: "border-box",
                 }}
               >
                 <PhoneOff size={14} />
-                <span>Leave call</span>
+                <span>{isUnder400 ? "Leave" : "Leave call"}</span>
               </motion.button>
             </>
           ) : (
@@ -442,6 +454,7 @@ export function CallBar({
                         style={{
                           display: "inline-flex",
                           alignItems: "center",
+                          justifyContent: "center",
                           gap: "6px",
                           padding: "6px 12px",
                           borderRadius: "10px",
@@ -451,10 +464,12 @@ export function CallBar({
                           fontSize: "12px",
                           fontWeight: 700,
                           cursor: "pointer",
+                          minHeight: "44px",
+                          boxSizing: "border-box",
                         }}
                       >
                         <Mic size={14} />
-                        <span>Start Voice</span>
+                        <span>{isUnder400 ? "Voice" : "Start Voice"}</span>
                       </motion.button>
 
                       <motion.button
@@ -465,6 +480,7 @@ export function CallBar({
                         style={{
                           display: "inline-flex",
                           alignItems: "center",
+                          justifyContent: "center",
                           gap: "6px",
                           padding: "6px 12px",
                           borderRadius: "10px",
@@ -474,10 +490,12 @@ export function CallBar({
                           fontSize: "12px",
                           fontWeight: 700,
                           cursor: "pointer",
+                          minHeight: "44px",
+                          boxSizing: "border-box",
                         }}
                       >
                         <Video size={14} />
-                        <span>Start Video</span>
+                        <span>{isUnder400 ? "Video" : "Start Video"}</span>
                       </motion.button>
                     </>
                   ) : (
@@ -489,6 +507,7 @@ export function CallBar({
                       style={{
                         display: "inline-flex",
                         alignItems: "center",
+                        justifyContent: "center",
                         gap: "6px",
                         padding: "6px 12px",
                         borderRadius: "10px",
@@ -498,10 +517,12 @@ export function CallBar({
                         fontSize: "12px",
                         fontWeight: 700,
                         cursor: "pointer",
+                        minHeight: "44px",
+                        boxSizing: "border-box",
                       }}
                     >
                       <PhoneCall size={14} />
-                      <span>Join Call</span>
+                      <span>{isUnder400 ? "Join" : "Join Call"}</span>
                     </motion.button>
                   )}
                 </>
@@ -518,6 +539,7 @@ export function CallBar({
                       style={{
                         display: "inline-flex",
                         alignItems: "center",
+                        justifyContent: "center",
                         gap: "6px",
                         padding: "6px 12px",
                         borderRadius: "10px",
@@ -528,10 +550,12 @@ export function CallBar({
                         fontWeight: 700,
                         cursor: isPendingJoin ? "not-allowed" : "pointer",
                         opacity: isPendingJoin ? 0.7 : 1,
+                        minHeight: "44px",
+                        boxSizing: "border-box",
                       }}
                     >
                       <PhoneCall size={14} />
-                      <span>{isPendingJoin ? "Requesting..." : "Join Call"}</span>
+                      <span>{isPendingJoin ? "Requesting..." : isUnder400 ? "Join" : "Join Call"}</span>
                     </motion.button>
                   )}
                 </>

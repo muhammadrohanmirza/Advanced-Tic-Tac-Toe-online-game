@@ -37,6 +37,105 @@ interface VideoPanelProps {
   isMobile: boolean;
 }
 
+/**
+ * Persistent Remote Audio elements: always mounted and playing unmuted audio
+ * whenever participants are present, even if the video panel UI is closed/collapsed.
+ */
+export function RemoteAudioElements({
+  participants,
+  myUserId,
+  remoteStreams,
+  isDeafened,
+  mutedForMe,
+  onAudioBlocked,
+}: {
+  participants: CallParticipant[];
+  myUserId: string;
+  remoteStreams: Map<string, MediaStream>;
+  isDeafened: boolean;
+  mutedForMe: Set<string>;
+  onAudioBlocked?: () => void;
+}) {
+  // Collect all unique remote user IDs from both participants and remoteStreams keys
+  const remoteUserIds = Array.from(
+    new Set([
+      ...participants.filter((p) => p.userId !== myUserId).map((p) => p.userId),
+      ...Array.from(remoteStreams.keys()).filter((uid) => uid !== myUserId),
+    ])
+  );
+
+  return (
+    <div
+      style={{ position: "fixed", top: -9999, left: -9999, opacity: 0, pointerEvents: "none" }}
+      aria-hidden="true"
+    >
+      {remoteUserIds.map((userId) => {
+        const stream = remoteStreams.get(userId);
+        const isMuted = isDeafened || mutedForMe.has(userId);
+        return (
+          <RemoteAudioTrack
+            key={userId}
+            userId={userId}
+            stream={stream}
+            muted={isMuted}
+            onAudioBlocked={onAudioBlocked}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+export function RemoteAudioTrack({
+  userId,
+  stream,
+  muted,
+  onAudioBlocked,
+}: {
+  userId: string;
+  stream?: MediaStream;
+  muted: boolean;
+  onAudioBlocked?: () => void;
+}) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+
+    if (stream) {
+      if (el.srcObject !== stream) {
+        el.srcObject = stream;
+      }
+      el.muted = muted;
+      el.volume = 1;
+      el.play().catch((err) => {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn(`[WebRTC:Audio] Audio play blocked for ${userId}:`, err);
+        }
+        onAudioBlocked?.();
+      });
+
+      const handleTrack = () => {
+        if (el.srcObject !== stream) {
+          el.srcObject = stream;
+        }
+        el.play().catch(() => onAudioBlocked?.());
+      };
+      stream.addEventListener("addtrack", handleTrack);
+      stream.addEventListener("removetrack", handleTrack);
+      return () => {
+        stream.removeEventListener("addtrack", handleTrack);
+        stream.removeEventListener("removetrack", handleTrack);
+      };
+    } else {
+      el.srcObject = null;
+    }
+  }, [stream, muted, userId, onAudioBlocked]);
+
+  return <audio ref={audioRef} autoPlay playsInline muted={muted} />;
+}
+
 export function VideoPanel({
   isOpen,
   onClose,
@@ -56,7 +155,7 @@ export function VideoPanel({
   onAudioBlocked,
   isMobile,
 }: VideoPanelProps) {
-  if (!isOpen || participants.length === 0) return null;
+  if (participants.length === 0) return null;
 
   // Sort participants: players first, then spectators, then by joinedAt
   const sortedParticipants = [...participants].sort((a, b) => {
@@ -67,24 +166,48 @@ export function VideoPanel({
 
   return (
     <AnimatePresence>
-      <motion.div
-        initial={isMobile ? { y: 200, opacity: 0 } : { opacity: 0, scale: 0.95 }}
-        animate={isMobile ? { y: 0, opacity: 1 } : { opacity: 1, scale: 1 }}
-        exit={isMobile ? { y: 200, opacity: 0 } : { opacity: 0, scale: 0.95 }}
-        transition={{ duration: 0.25, ease: "easeOut" }}
-        style={{
-          width: "100%",
-          maxWidth: isMobile ? "100%" : "520px",
-          margin: "0 auto 16px auto",
-          backgroundColor: "var(--bg-card, rgba(13,13,13,0.92))",
-          border: "1px solid var(--border-color, #222)",
-          borderRadius: "16px",
-          padding: isMobile ? "10px" : "14px",
-          boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-        }}
-      >
+      {isOpen && (
+        <motion.div
+          drag={!isMobile}
+            dragMomentum={false}
+            initial={isMobile ? { y: "100%", opacity: 0 } : { opacity: 0, scale: 0.95 }}
+            animate={isMobile ? { y: 0, opacity: 1 } : { opacity: 1, scale: 1 }}
+            exit={isMobile ? { y: "100%", opacity: 0 } : { opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            style={{
+              width: "100%",
+              maxWidth: isMobile ? "100vw" : "520px",
+              boxSizing: "border-box",
+              position: isMobile ? "fixed" : "relative",
+              bottom: isMobile ? 0 : undefined,
+              left: isMobile ? 0 : undefined,
+              right: isMobile ? 0 : undefined,
+              zIndex: isMobile ? 60 : 20,
+              margin: isMobile ? 0 : "0 auto 16px auto",
+              backgroundColor: "rgba(15, 23, 42, 0.94)",
+              border: "1.5px solid rgba(255, 255, 255, 0.12)",
+              borderRadius: isMobile ? "20px 20px 0 0" : "20px",
+              padding: isMobile ? "12px 14px 18px 14px" : "16px",
+              boxShadow: "0 12px 36px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)",
+              backdropFilter: "blur(14px)",
+              WebkitBackdropFilter: "blur(14px)",
+              maxHeight: isMobile ? "45vh" : undefined,
+              overflowY: isMobile ? "auto" : undefined,
+            }}
+          >
+        {/* Mobile bottom sheet grab handle */}
+        {isMobile && (
+          <div
+            style={{
+              width: "36px",
+              height: "4px",
+              backgroundColor: "rgba(255,255,255,0.3)",
+              borderRadius: "2px",
+              margin: "0 auto 8px auto",
+            }}
+          />
+        )}
+
         {/* Panel Header */}
         <div
           style={{
@@ -94,12 +217,18 @@ export function VideoPanel({
             marginBottom: "10px",
             paddingBottom: "6px",
             borderBottom: "1px solid var(--border-color, rgba(255,255,255,0.06))",
+            cursor: !isMobile ? "grab" : "default",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-primary, #fff)" }}>
               Call Participants ({participants.length}/6)
             </span>
+            {!isMobile && (
+              <span style={{ fontSize: "10px", color: "var(--text-muted, #666)", marginLeft: "4px" }}>
+                (drag to move)
+              </span>
+            )}
           </div>
 
           <button
@@ -130,7 +259,7 @@ export function VideoPanel({
                 ? "1fr"
                 : participants.length === 2
                 ? isMobile ? "1fr" : "1fr 1fr"
-                : "repeat(auto-fit, minmax(140px, 1fr))",
+                : "repeat(auto-fit, minmax(120px, 1fr))",
             gap: isMobile ? "8px" : "10px",
             maxHeight: isMobile ? "240px" : "360px",
             overflowY: "auto",
@@ -166,8 +295,9 @@ export function VideoPanel({
           })}
         </div>
       </motion.div>
-    </AnimatePresence>
-  );
+    )}
+  </AnimatePresence>
+);
 }
 
 interface TileProps {
@@ -204,62 +334,76 @@ const ParticipantTile = memo(function ParticipantTile({
   isMobile,
 }: TileProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [showMenu, setShowMenu] = useState(false);
+  const [trackVersion, setTrackVersion] = useState(0);
 
-  // Check if live video track is currently present and active (not muted/ended)
+  // Listen to stream and track events to refresh srcObject and tile state
+  useEffect(() => {
+    if (!stream) return;
+
+    const handleTrackChange = () => {
+      setTrackVersion((v) => v + 1);
+    };
+
+    stream.addEventListener("addtrack", handleTrackChange);
+    stream.addEventListener("removetrack", handleTrackChange);
+
+    const videoTracks = stream.getVideoTracks();
+    videoTracks.forEach((t) => {
+      t.addEventListener("mute", handleTrackChange);
+      t.addEventListener("unmute", handleTrackChange);
+      t.addEventListener("ended", handleTrackChange);
+    });
+
+    return () => {
+      stream.removeEventListener("addtrack", handleTrackChange);
+      stream.removeEventListener("removetrack", handleTrackChange);
+      videoTracks.forEach((t) => {
+        t.removeEventListener("mute", handleTrackChange);
+        t.removeEventListener("unmute", handleTrackChange);
+        t.removeEventListener("ended", handleTrackChange);
+      });
+    };
+  }, [stream, trackVersion]);
+
+  // Check if live video track is currently present and active
   const liveVideoTrack = stream
     ?.getVideoTracks()
-    .find((t) => t.readyState === "live" && !t.muted);
+    .find((t) => t.readyState === "live");
+
+  // Show live video when stream has a live video track and (for local: cameraOn is true; for remote: not hidden by user)
   const hasLiveVideo = Boolean(
     liveVideoTrack &&
     (isLocal ? participant.cameraOn : true) &&
     !isVideoHidden
   );
 
-  // Attach media stream to video element when stream or tracks change
+  // Attach media stream to video element whenever stream changes, hasLiveVideo changes, or tracks update
   useEffect(() => {
-    if (videoRef.current) {
-      if (stream && hasLiveVideo) {
-        if (videoRef.current.srcObject !== stream) {
-          videoRef.current.srcObject = stream;
-        }
-        videoRef.current.play().catch((err) => {
-          if (process.env.NODE_ENV !== "production") {
-            console.warn("[WebRTC:Video] Play error:", err);
-          }
-        });
-      } else {
-        videoRef.current.srcObject = null;
-      }
-    }
-  }, [stream, hasLiveVideo]);
+    const el = videoRef.current;
+    if (!el) return;
 
-  // Attach media stream to audio element for remote participants when video is not active
-  useEffect(() => {
-    if (!isLocal && audioRef.current && stream) {
-      if (!hasLiveVideo) {
-        if (audioRef.current.srcObject !== stream) {
-          audioRef.current.srcObject = stream;
-        }
-        audioRef.current.muted = isDeafened || isMutedForMe;
-        audioRef.current.volume = 1;
-        audioRef.current.play().catch((err) => {
-          if (process.env.NODE_ENV !== "production") {
-            console.warn(`[WebRTC:Audio] Audio play blocked for ${participant.userId}:`, err);
-          }
-          onAudioBlocked?.();
-        });
-      } else {
-        audioRef.current.srcObject = null;
+    if (stream && (liveVideoTrack || hasLiveVideo)) {
+      if (el.srcObject !== stream) {
+        el.srcObject = stream;
       }
+      el.play().catch((err) => {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("[WebRTC:Video] Play error:", err);
+        }
+      });
+    } else {
+      el.srcObject = null;
     }
-  }, [isLocal, stream, hasLiveVideo, isDeafened, isMutedForMe, participant.userId, onAudioBlocked]);
+  }, [stream, hasLiveVideo, liveVideoTrack, trackVersion]);
 
   const isSpectator = participant.role === "spectator";
 
   const audioTrackCount = stream ? stream.getAudioTracks().length : 0;
   const videoTrackCount = stream ? stream.getVideoTracks().length : 0;
+  const srcObjectVideoTrackCount = (videoRef.current?.srcObject as MediaStream)?.getVideoTracks?.().length ?? 0;
+  const videoReadyState = videoRef.current?.readyState ?? 0;
+  const videoDimensions = `${videoRef.current?.videoWidth ?? 0}x${videoRef.current?.videoHeight ?? 0}`;
 
   return (
     <div
@@ -285,64 +429,60 @@ const ParticipantTile = memo(function ParticipantTile({
         transition: "border-color 0.2s, box-shadow 0.2s",
       }}
     >
-      {/* Dedicated Audio Element for remote participants when video tile is off/hidden */}
-      {!isLocal && stream && !hasLiveVideo && (
-        <audio
-          ref={audioRef}
-          autoPlay
-          playsInline
-          style={{ display: "none" }}
-        />
-      )}
-
-      {/* Video Element: Local tile muted, remote tiles unmuted (unless deafened/mutedForMe) */}
+      {/* Video Element: Video track display (local mirrored) - Kept in DOM, opacity toggled */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
-        muted={isLocal ? true : (isDeafened || isMutedForMe)}
+        muted={true}
         style={{
+          position: "absolute",
+          inset: 0,
           width: "100%",
           height: "100%",
           objectFit: "cover",
-          display: hasLiveVideo ? "block" : "none",
+          opacity: hasLiveVideo ? 1 : 0,
+          pointerEvents: hasLiveVideo ? "auto" : "none",
           transform: isLocal ? "scaleX(-1)" : "none",
+          zIndex: 1,
+          transition: "opacity 0.2s ease",
         }}
       />
 
       {/* Avatar Placeholder when live video is off */}
-      {!hasLiveVideo && (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "100%",
+          height: "100%",
+          backgroundColor: "rgba(255, 255, 255, 0.03)",
+          opacity: hasLiveVideo ? 0 : 1,
+          zIndex: 0,
+          transition: "opacity 0.2s ease",
+        }}
+      >
         <div
           style={{
+            width: "44px",
+            height: "44px",
+            borderRadius: "50%",
+            backgroundColor: isSpectator ? "rgba(255, 0, 255, 0.15)" : "rgba(0, 255, 255, 0.15)",
+            border: `2px solid ${isSpectator ? "var(--accent-o, #FF00FF)" : "var(--accent-x, #00FFFF)"}`,
             display: "flex",
-            flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            width: "100%",
-            height: "100%",
-            backgroundColor: "rgba(255, 255, 255, 0.03)",
+            color: isSpectator ? "var(--accent-o, #FF00FF)" : "var(--accent-x, #00FFFF)",
+            fontSize: "18px",
+            fontWeight: 700,
+            boxShadow: isSpeaking ? "0 0 12px rgba(0,255,65,0.4)" : "none",
           }}
         >
-          <div
-            style={{
-              width: "44px",
-              height: "44px",
-              borderRadius: "50%",
-              backgroundColor: isSpectator ? "rgba(255, 0, 255, 0.15)" : "rgba(0, 255, 255, 0.15)",
-              border: `2px solid ${isSpectator ? "var(--accent-o, #FF00FF)" : "var(--accent-x, #00FFFF)"}`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: isSpectator ? "var(--accent-o, #FF00FF)" : "var(--accent-x, #00FFFF)",
-              fontSize: "18px",
-              fontWeight: 700,
-              boxShadow: isSpeaking ? "0 0 12px rgba(0,255,65,0.4)" : "none",
-            }}
-          >
-            {participant.name ? participant.name.charAt(0).toUpperCase() : "U"}
-          </div>
+          {participant.name ? participant.name.charAt(0).toUpperCase() : "U"}
         </div>
-      )}
+      </div>
 
       {/* Top Overlay Badges */}
       <div
@@ -552,7 +692,7 @@ const ParticipantTile = memo(function ParticipantTile({
             padding: "2px 6px",
             backgroundColor: "rgba(0, 0, 0, 0.75)",
             borderRadius: "4px",
-            fontSize: "9px",
+            fontSize: "8.5px",
             fontFamily: "monospace",
             color: "#00FF41",
             zIndex: 15,
@@ -561,17 +701,18 @@ const ParticipantTile = memo(function ParticipantTile({
             overflow: "hidden",
             textOverflow: "ellipsis",
             border: "1px solid rgba(0, 255, 65, 0.2)",
+            lineHeight: 1.25,
           }}
         >
           {isLocal ? (
-            <span>
-              Local | Tracks A:{audioTrackCount} V:{videoTrackCount}
-            </span>
+            <div>
+              <span>Local | A:{audioTrackCount > 0 && participant.micOn ? 1 : 0} | V:{videoTrackCount > 0 && participant.cameraOn ? 1 : 0} | mic:{participant.micOn ? "ON" : "OFF"} | cam:{participant.cameraOn ? "ON" : "OFF"}</span>
+            </div>
           ) : (
-            <span>
-              Conn:{diag?.connectionState || "new"} | ICE:{diag?.iceConnectionState || "new"} | A:
-              {audioTrackCount} V:{videoTrackCount}
-            </span>
+            <div>
+              <div>Conn:{diag?.connectionState || "new"} | ICE:{diag?.iceConnectionState || "new"} | A: send:{diag?.sendingAudio ?? (participant.micOn ? 1 : 0)} rcv:{audioTrackCount} | dir:{diag?.audioDirection || "-"}</div>
+              <div>V: send:{diag?.sendingVideo ?? (participant.cameraOn ? 1 : 0)} rcv:{videoTrackCount} | dir:{diag?.videoDirection || "-"} | cam:{participant.cameraOn ? "ON" : "OFF"}</div>
+            </div>
           )}
         </div>
       )}

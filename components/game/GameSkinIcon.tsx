@@ -101,17 +101,17 @@ export function GameSkinIcon({
       );
     }
 
-    // Default "classic" neon icon
+    // Default "classic" cartoon 3D icon
     if (symbol === "X") {
       return (
         <X
           style={{
             width: size,
             height: size,
-            color: "var(--accent-x, #00FFFF)",
-            filter: "drop-shadow(0 0 8px var(--accent-x, #00FFFF))",
+            color: "var(--accent-x, #00A3FF)",
+            filter: "drop-shadow(0 3px 0 rgba(0, 100, 220, 0.45)) drop-shadow(0 2px 8px var(--accent-x, #00A3FF))",
           }}
-          strokeWidth={strokeWidth}
+          strokeWidth={strokeWidth || 3.8}
         />
       );
     }
@@ -121,10 +121,10 @@ export function GameSkinIcon({
         style={{
           width: size,
           height: size,
-          color: "var(--accent-o, #FF00FF)",
-          filter: "drop-shadow(0 0 8px var(--accent-o, #FF00FF))",
+          color: "var(--accent-o, #FF7A00)",
+          filter: "drop-shadow(0 3px 0 rgba(190, 80, 0, 0.45)) drop-shadow(0 2px 8px var(--accent-o, #FF7A00))",
         }}
-        strokeWidth={strokeWidth}
+        strokeWidth={strokeWidth || 3.8}
       />
     );
   };

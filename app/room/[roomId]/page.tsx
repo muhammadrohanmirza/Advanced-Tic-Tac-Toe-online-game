@@ -6,7 +6,23 @@ import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { ChatBox } from "@/components/game/ChatBox";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import Confetti from "react-confetti";
-import { LogOut, Trophy, Timer, AlertTriangle, Eye, Play } from "lucide-react";
+import {
+  LogOut,
+  Trophy,
+  Timer,
+  AlertTriangle,
+  Eye,
+  Play,
+  ArrowLeft,
+  Copy,
+  Check,
+  Users,
+  Crown,
+  Sparkles,
+  Zap,
+  RefreshCw,
+  History,
+} from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSocket } from "@/lib/socket-client";
@@ -19,8 +35,14 @@ import { FloatingReactionsOverlay, ActiveReaction } from "@/components/game/Floa
 import { useSound } from "@/hooks/useSound";
 import { useWebRTC } from "@/hooks/useWebRTC";
 import { CallBar } from "@/components/game/CallBar";
-import { VideoPanel } from "@/components/game/VideoPanel";
+import { VideoPanel, RemoteAudioElements } from "@/components/game/VideoPanel";
 import { CallModals } from "@/components/game/CallModals";
+import { RoundIconButton } from "@/components/ui/RoundIconButton";
+import { CrownBadge } from "@/components/ui/CrownBadge";
+import { NeonButton } from "@/components/ui/NeonButton";
+import { NeonCard } from "@/components/ui/NeonCard";
+import { WinLoseDrawOverlay } from "@/components/game/WinLoseDrawOverlay";
+import { GameCell } from "@/components/game/GameCell";
 
 type CellValue = "X" | "O" | null;
 type TurnPlayer = "X" | "O";
@@ -73,9 +95,12 @@ export default function GameRoomPage() {
   const [isLoadingSpectators, setIsLoadingSpectators] = useState(false);
   const [spectatorSearchQuery, setSpectatorSearchQuery] = useState("");
   const [showSpectatorList, setShowSpectatorList] = useState(false);
+  const [roomCode, setRoomCode] = useState<string>("");
+  const [copiedCode, setCopiedCode] = useState(false);
   const canonicalRoomIdRef = useRef<string | null>(null);
   const joinedRef = useRef<string | null>(null);
   const [isMyTurn, setIsMyTurn] = useState(false);
+  const [showGameOverOverlay, setShowGameOverOverlay] = useState(false);
   const [rematchRequested, setRematchRequested] = useState(false);
   const [rematchAccepted, setRematchAccepted] = useState(false);
   const [gameId, setGameId] = useState<string | null>(null);
@@ -148,7 +173,9 @@ export default function GameRoomPage() {
   // Calculate responsive board size - ensure it fits within container
   const getBoardSize = () => {
     if (isMobile) {
-      return Math.min(width - 40, 320);
+      const maxW = Math.min(width - 32, 340);
+      const maxH = height < 500 ? height * 0.62 : 360;
+      return Math.max(220, Math.floor(Math.min(maxW, maxH)));
     } else if (isTablet) {
       return Math.min(width * 0.45, 380);
     }
@@ -272,6 +299,7 @@ export default function GameRoomPage() {
       const room = data?.room || data;
       if (room) {
         canonicalRoomIdRef.current = room.id;
+        if (room.code) setRoomCode(room.code);
         const normalizedBoard = (room.board || []).map((cell: string) => cell === "" ? null : cell as CellValue);
         setBoard(normalizedBoard);
         setCurrentTurn(room.currentTurn || "X");
@@ -302,6 +330,7 @@ export default function GameRoomPage() {
         return;
       }
       canonicalRoomIdRef.current = room.id;
+      if (room.code) setRoomCode(room.code);
       const normalizedBoard = (room.board || []).map((cell: string) => cell === "" ? null : cell as CellValue);
       setBoard(normalizedBoard);
       setCurrentTurn(room.currentTurn || "X");
@@ -464,6 +493,7 @@ export default function GameRoomPage() {
       if (data.winner) {
         setWinner(data.winner);
         setGameStatus("finished");
+        setShowGameOverOverlay(true);
         setTurnDeadline(null);
         setTimeLeft(null);
       }
@@ -477,6 +507,7 @@ export default function GameRoomPage() {
       setWinner(data.winner);
       setWinningLine(data.winningLine);
       setGameStatus("finished");
+      setShowGameOverOverlay(true);
       setTurnDeadline(null);
       setTimeLeft(null);
       if (data?.gameId) {
@@ -675,6 +706,7 @@ export default function GameRoomPage() {
         setGameStatus("playing");
         setWinner(null);
         setWinningLine(null);
+        setShowGameOverOverlay(false);
         setRematchRequested(false);
         setRematchAccepted(false);
         setGameId(null);
@@ -718,15 +750,16 @@ export default function GameRoomPage() {
 
     socket.on("rematch-requested", (data: any) => {
       console.log("[Room] rematch-requested:", data);
+      setShowGameOverOverlay(false);
       setRematchRequested(true);
-      toast("Opponent wants a rematch!");
+      toast(`${opponentName || "Opponent"} wants a rematch!`, { icon: "⚔️" });
     });
 
     socket.on("rematch-rejected", (data: any) => {
       console.log("[Room] rematch-rejected:", data);
       setRematchRequested(false);
-      toast.error("Opponent declined rematch");
-      setTimeout(() => router.push("/lobby"), 1500);
+      setRematchAccepted(false);
+      toast.error(`${opponentName || "Opponent"} declined the rematch`);
     });
 
     socket.on("error", (data: any) => {
@@ -899,19 +932,40 @@ export default function GameRoomPage() {
     }
   }, [handleSendChatMessage]);
 
+  const handleCellClick = useCallback(
+    (index: number) => {
+      if (!isSpectator && isMyTurn && board[index] === null && socket) {
+        socket.emit("make-move", {
+          roomId,
+          cellIndex: index,
+          playerId: session?.user?.id,
+        });
+      }
+    },
+    [isSpectator, isMyTurn, board, socket, roomId, session?.user?.id]
+  );
+
   const handleRematch = () => {
     playSfx("click");
     if (roomId && session?.user && !isSpectator) {
-      socket?.emit("request-rematch", { roomId, playerId: session.user.id });
+      socket?.emit("request-rematch", {
+        roomId: canonicalRoomIdRef.current || roomId,
+        playerId: session.user.id,
+      });
       setRematchAccepted(true);
-      toast("Rematch requested! Waiting for opponent...");
+      setShowGameOverOverlay(false);
+      toast(`Rematch requested! Waiting for ${opponentName}...`);
     }
   };
 
   const handleAcceptRematch = () => {
     playSfx("click");
     if (roomId && session?.user && !isSpectator) {
-      socket?.emit("accept-rematch", { roomId, playerId: session.user.id });
+      socket?.emit("accept-rematch", {
+        roomId: canonicalRoomIdRef.current || roomId,
+        playerId: session.user.id,
+      });
+      setShowGameOverOverlay(false);
       setRematchRequested(false);
       setRematchAccepted(false);
     }
@@ -920,722 +974,1108 @@ export default function GameRoomPage() {
   const handleRejectRematch = () => {
     playSfx("click");
     if (roomId && !isSpectator) {
-      socket?.emit("reject-rematch", { roomId });
+      if (session?.user?.id) {
+        socket?.emit("reject-rematch", {
+          roomId: canonicalRoomIdRef.current || roomId,
+          playerId: session.user.id,
+        });
+      }
       setRematchRequested(false);
-      setTimeout(() => router.push("/lobby"), 500);
+    }
+  };
+
+  const displayRoomCode = roomCode || (roomId && roomId.length > 8 ? roomId.slice(0, 4).toUpperCase() : roomId?.toUpperCase() || "");
+
+  const handleCopyRoomCode = () => {
+    if (displayRoomCode) {
+      navigator.clipboard.writeText(displayRoomCode);
+      setCopiedCode(true);
+      playSfx("click");
+      toast.success(`Room code #${displayRoomCode} copied!`);
+      setTimeout(() => setCopiedCode(false), 2000);
     }
   };
 
   if (status === "loading") {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#050505" }}>
-        <LoadingSpinner variant="cyan" size="xl" text="Loading game..." />
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "var(--bg-primary, #0a0e1a)" }}>
+        <LoadingSpinner variant="yellow" size="xl" text="Loading game..." />
       </div>
     );
   }
 
-  return (
-    <div style={{ minHeight: "100vh", backgroundColor: "var(--bg-primary, #050505)", position: "relative", overflowX: "hidden" }}>
-      <Toaster position="top-center" />
-      {showConfetti && <Confetti width={width} height={height} recycle={false} numberOfPieces={200} colors={["#00FFFF", "#FF00FF", "#00FF41", "#FFD700"]} gravity={0.3} />}
+  const isPlayer1 = Boolean(session?.user?.id && playerSymbol === "X");
+  const isPlayer2 = Boolean(session?.user?.id && playerSymbol === "O");
 
-      {/* Header - Responsive */}
-      <header style={{
-        padding: isMobile ? "10px 16px" : "16px",
-        borderBottom: "1px solid var(--border-color, #1a1a1a)",
-        backgroundColor: "var(--theme-header-bg, rgba(13,13,13,0.8))",
-      }}>
-        <div style={{
-          maxWidth: "1120px",
-          margin: "0 auto",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "10px",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-            <Trophy style={{
-              width: isMobile ? "18px" : "24px",
-              height: isMobile ? "18px" : "24px",
-              color: "var(--accent-x, #00FFFF)",
-            }} />
-            <h1 className="neon-text-cyan" style={{
-              fontSize: isMobile ? "16px" : "20px",
-              fontWeight: "bold",
-              margin: 0,
-            }}>Game Room</h1>
+  return (
+    <div style={{ minHeight: "100dvh", position: "relative", overflowX: "hidden", paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}>
+      <Toaster position="top-center" />
+      {showConfetti && <Confetti width={width} height={height} recycle={false} numberOfPieces={200} colors={["#38bdf8", "#ec4899", "#22c55e", "#f59e0b"]} gravity={0.3} />}
+
+      {/* Header - Matching Reference Image 2 */}
+      <header
+        style={{
+          padding: isMobile ? "10px 14px" : "14px 24px",
+          borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+          backgroundColor: "rgba(10, 14, 26, 0.8)",
+          backdropFilter: "blur(12px)",
+          position: "sticky",
+          top: 0,
+          zIndex: 40,
+        }}
+      >
+        <div
+          style={{
+            maxWidth: "1240px",
+            margin: "0 auto",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "10px",
+            flexWrap: "wrap",
+            minWidth: 0,
+          }}
+        >
+          {/* Left: Back/Exit round button */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+            <RoundIconButton
+              onClick={handleLeaveRoom}
+              ariaLabel="Leave Room"
+              variant="dark"
+              size={isMobile ? 38 : 42}
+            >
+              <ArrowLeft size={isMobile ? 18 : 20} />
+            </RoundIconButton>
+
+            {/* Room #CODE with copy button */}
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  fontSize: isMobile ? "clamp(13px, 3.8vw, 17px)" : "20px",
+                  fontWeight: 800,
+                  color: "#ffffff",
+                  fontFamily: "var(--font-display, inherit)",
+                  letterSpacing: "0.2px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <Users size={isMobile ? 15 : 20} color="#38bdf8" />
+                <span>Room #{displayRoomCode}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyRoomCode}
+                title="Copy room code"
+                style={{
+                  background: copiedCode ? "rgba(34, 197, 94, 0.2)" : "rgba(255, 255, 255, 0.08)",
+                  border: `1px solid ${copiedCode ? "#22c55e" : "rgba(255, 255, 255, 0.15)"}`,
+                  borderRadius: "8px",
+                  padding: "5px",
+                  cursor: "pointer",
+                  color: copiedCode ? "#22c55e" : "#e2e8f0",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                {copiedCode ? <Check size={13} /> : <Copy size={13} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Right: Player count chip, Theme, Sound */}
+          <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "6px" : "10px" }}>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px",
+                padding: isMobile ? "4px 8px" : "6px 12px",
+                borderRadius: "999px",
+                background: "rgba(255, 255, 255, 0.08)",
+                border: "1px solid rgba(255, 255, 255, 0.12)",
+                color: "#ffffff",
+                fontSize: isMobile ? "11px" : "13px",
+                fontWeight: 700,
+              }}
+            >
+              <Users size={isMobile ? 12 : 14} color="#38bdf8" />
+              <span>{opponentOnline ? "2/2" : "1/2"}</span>
+              {spectatorCount > 0 && (
+                <>
+                  <span style={{ opacity: 0.35 }}>•</span>
+                  <Eye size={isMobile ? 12 : 14} color="#a855f7" />
+                  <span>{spectatorCount}</span>
+                </>
+              )}
+            </div>
+
             {isSpectator && (
               <span
                 style={{
                   fontSize: isMobile ? "10px" : "11px",
                   fontWeight: 700,
-                  padding: "2px 8px",
+                  padding: "3px 8px",
                   borderRadius: "999px",
-                  backgroundColor: "rgba(0, 255, 255, 0.15)",
-                  color: "var(--accent-x, #00FFFF)",
-                  border: "1px solid var(--accent-x, #00FFFF)",
-                  letterSpacing: "0.5px",
+                  backgroundColor: "rgba(56, 189, 248, 0.2)",
+                  color: "#38bdf8",
+                  border: "1px solid #38bdf8",
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "4px",
                 }}
               >
-                <Eye style={{ width: "12px", height: "12px" }} />
-                SPECTATING
+                <Eye size={12} />
+                {!isMobile && "SPECTATING"}
               </span>
             )}
-          </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "8px" : "12px" }}>
             <ThemeSwitcher compact={isMobile} align="right" />
             <SoundControls compact={isMobile} align="right" />
-            <motion.button
-              type="button"
-              onClick={handleLeaveRoom}
-              whileHover={{
-                scale: 1.05,
-                y: -2,
-                boxShadow: "0 0 20px rgba(255,49,49,0.6)",
-              }}
-              whileTap={{ scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-              style={{
-                minHeight: isMobile ? "40px" : "44px",
-                padding: isMobile ? "6px 12px" : "8px 16px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "8px",
-                border: "2px solid #FF3131",
-                borderRadius: "12px",
-                background: "rgba(255,49,49,0.03)",
-                color: "#FF3131",
-                fontSize: isMobile ? "12px" : "14px",
-                fontWeight: 700,
-                cursor: "pointer",
-                boxShadow: "0 0 12px rgba(255,49,49,0.35)",
-                textShadow: "0 0 8px #FF3131",
-                transition: "all .3s ease",
-              }}
-            >
-              <LogOut
-                style={{
-                  width: isMobile ? "14px" : "16px",
-                  height: isMobile ? "14px" : "16px",
-                }}
-              />
-              {!isMobile && <span>Leave</span>}
-            </motion.button>
           </div>
         </div>
       </header>
 
-      {/* Main Content - Responsive */}
-      <main style={{
-        maxWidth: "800px",
-        margin: "0 auto",
-        padding: isMobile ? "16px" : "40px 24px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: isMobile ? "18px" : "24px",
-        overflowX: "hidden",
-      }}>
-
-        {/* Players - Responsive: Side by side on all screens */}
-        <div style={{
-          display: "flex",
-          gap: isMobile ? "12px" : "24px",
-          width: "100%",
-          justifyContent: "center",
-          flexWrap: isMobile ? "wrap" : "nowrap",
-        }}>
-          {isSpectator ? (
-            <>
-              <PlayerCard
-                name={player1Name}
-                symbol="X"
-                isActive={currentTurn === "X" && gameStatus === "playing"}
-                isYou={false}
-                isMobile={isMobile}
-                timeLeft={currentTurn === "X" ? timeLeft : null}
-                turnDuration={turnDuration}
-                timeoutCount={timeoutCountX}
-              />
-              <PlayerCard
-                name={player2Name}
-                symbol="O"
-                isActive={currentTurn === "O" && gameStatus === "playing"}
-                isYou={false}
-                isMobile={isMobile}
-                timeLeft={currentTurn === "O" ? timeLeft : null}
-                turnDuration={turnDuration}
-                timeoutCount={timeoutCountO}
-              />
-            </>
-          ) : (
-            <>
-              <PlayerCard
-                name={session?.user?.name || "You"}
-                symbol={playerSymbol || "X"}
-                isActive={currentTurn === (playerSymbol || "X") && gameStatus === "playing"}
-                isYou
-                isMobile={isMobile}
-                timeLeft={currentTurn === (playerSymbol || "X") ? timeLeft : null}
-                turnDuration={turnDuration}
-                timeoutCount={playerSymbol === "X" ? timeoutCountX : timeoutCountO}
-              />
-              <PlayerCard
-                name={opponentName}
-                symbol={(playerSymbol || "X") === "X" ? "O" : "X"}
-                isActive={currentTurn !== (playerSymbol || "X") && gameStatus === "playing"}
-                isMobile={isMobile}
-                timeLeft={currentTurn !== (playerSymbol || "X") ? timeLeft : null}
-                turnDuration={turnDuration}
-                timeoutCount={playerSymbol === "X" ? timeoutCountO : timeoutCountX}
-              />
-            </>
-          )}
-        </div>
-
-        {/* Dedicated Spectators Row - Below Player Cards */}
-        <div style={{
-          width: "100%",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "8px",
+      {/* Main Content - Responsive Grid */}
+      <main
+        style={{
+          maxWidth: "1240px",
+          margin: "0 auto",
+          padding: isMobile ? "12px 12px 48px 12px" : "24px 20px 48px 20px",
           position: "relative",
-          zIndex: 30,
-        }}>
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "10px",
-            flexWrap: "wrap",
-          }}>
-            {/* First 3 spectator avatars stacked */}
-            {spectators.length > 0 && (
-              <div style={{ display: "flex", alignItems: "center" }}>
-                <div style={{ display: "flex", alignItems: "center" }}>
-                  {spectators.slice(0, 3).map((spec, idx) => (
-                    <div
-                      key={spec.id || idx}
-                      title={spec.name}
+          zIndex: 10,
+          width: "100%",
+          boxSizing: "border-box",
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: isMobile
+              ? "minmax(0, 1fr)"
+              : isTablet
+              ? "minmax(0, 1fr) 340px"
+              : "280px minmax(0, 1fr) 340px",
+            gap: isMobile ? "16px" : "24px",
+            alignItems: "start",
+            width: "100%",
+            boxSizing: "border-box",
+          }}
+        >
+          {/* LEFT PANEL: Players & Spectators (On tablet, merged with center; on mobile, below board or in tabs) */}
+          {(!isTablet || isMobile) && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "14px",
+                width: "100%",
+                order: isMobile ? 3 : 1,
+              }}
+            >
+              <NeonCard
+                variant="glass"
+                style={{
+                  padding: isMobile ? "14px" : "18px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                  width: "100%",
+                  boxSizing: "border-box",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    paddingBottom: "10px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Users size={16} color="#38bdf8" />
+                    <span
                       style={{
-                        width: isMobile ? "24px" : "28px",
-                        height: isMobile ? "24px" : "28px",
-                        borderRadius: "50%",
-                        backgroundColor: "var(--bg-card, #12121c)",
-                        border: "2px solid var(--border-color, rgba(168,85,247,0.4))",
-                        color: "var(--text-main, #ffffff)",
+                        fontSize: "15px",
+                        fontWeight: 700,
+                        color: "#fff",
+                        fontFamily: "var(--font-display, inherit)",
+                      }}
+                    >
+                      Players
+                    </span>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      color: "var(--text-muted, #94a3b8)",
+                      backgroundColor: "rgba(255,255,255,0.06)",
+                      padding: "2px 8px",
+                      borderRadius: "999px",
+                    }}
+                  >
+                    {opponentOnline ? "2/2" : "1/2"}
+                  </span>
+                </div>
+
+                {/* Player 1 Row (Host / X) */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "10px 12px",
+                    borderRadius: "14px",
+                    backgroundColor: "rgba(255, 255, 255, 0.05)",
+                    border:
+                      currentTurn === "X" && gameStatus === "playing"
+                        ? "1.5px solid #38bdf8"
+                        : "1px solid rgba(255, 255, 255, 0.08)",
+                    boxShadow:
+                      currentTurn === "X" && gameStatus === "playing"
+                        ? "0 0 14px rgba(56, 189, 248, 0.25)"
+                        : "none",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+                    <div style={{ position: "relative" }}>
+                      <div
+                        style={{
+                          width: "38px",
+                          height: "38px",
+                          borderRadius: "50%",
+                          background: "linear-gradient(135deg, #38bdf8, #0284c7)",
+                          border: "2px solid #7dd3fc",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "#ffffff",
+                          fontWeight: 800,
+                          fontSize: "14px",
+                        }}
+                      >
+                        {player1Name?.charAt(0).toUpperCase() || "1"}
+                      </div>
+                      <div style={{ position: "absolute", top: -8, left: -6 }}>
+                        <CrownBadge size={20} />
+                      </div>
+                    </div>
+                    <div style={{ overflow: "hidden" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span
+                          style={{
+                            fontSize: "13px",
+                            fontWeight: 700,
+                            color: "#fff",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {player1Name}
+                        </span>
+                        {!isSpectator && playerSymbol === "X" && (
+                          <span
+                            style={{
+                              fontSize: "10px",
+                              fontWeight: 700,
+                              padding: "1px 6px",
+                              borderRadius: "999px",
+                              backgroundColor: "rgba(168, 85, 247, 0.25)",
+                              color: "#c084fc",
+                              border: "1px solid rgba(168, 85, 247, 0.4)",
+                            }}
+                          >
+                            You
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
+                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#22c55e" }} />
+                        <span style={{ fontSize: "10px", color: "var(--text-muted, #94a3b8)" }}>Online</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      width: "28px",
+                      height: "28px",
+                      borderRadius: "8px",
+                      background: "linear-gradient(135deg, #38bdf8, #0284c7)",
+                      color: "#fff",
+                      fontWeight: 900,
+                      fontSize: "15px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: "0 2px 6px rgba(56, 189, 248, 0.4)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    ✕
+                  </div>
+                </div>
+
+                {/* Player 2 Row (O) or Waiting */}
+                {player2Name && player2Name !== "Waiting..." ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "10px 12px",
+                      borderRadius: "14px",
+                      backgroundColor: "rgba(255, 255, 255, 0.05)",
+                      border:
+                        currentTurn === "O" && gameStatus === "playing"
+                          ? "1.5px solid #fb923c"
+                          : "1px solid rgba(255, 255, 255, 0.08)",
+                      boxShadow:
+                        currentTurn === "O" && gameStatus === "playing"
+                          ? "0 0 14px rgba(251, 146, 60, 0.25)"
+                          : "none",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+                      <div
+                        style={{
+                          width: "38px",
+                          height: "38px",
+                          borderRadius: "50%",
+                          background: "linear-gradient(135deg, #fb923c, #ea580c)",
+                          border: "2px solid #fdba74",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "#ffffff",
+                          fontWeight: 800,
+                          fontSize: "14px",
+                        }}
+                      >
+                        {player2Name?.charAt(0).toUpperCase() || "2"}
+                      </div>
+                      <div style={{ overflow: "hidden" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span
+                            style={{
+                              fontSize: "13px",
+                              fontWeight: 700,
+                              color: "#fff",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {player2Name}
+                          </span>
+                          {!isSpectator && playerSymbol === "O" && (
+                            <span
+                              style={{
+                                fontSize: "10px",
+                                fontWeight: 700,
+                                padding: "1px 6px",
+                                borderRadius: "999px",
+                                backgroundColor: "rgba(168, 85, 247, 0.25)",
+                                color: "#c084fc",
+                                border: "1px solid rgba(168, 85, 247, 0.4)",
+                              }}
+                            >
+                              You
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
+                          <span
+                            style={{
+                              width: "6px",
+                              height: "6px",
+                              borderRadius: "50%",
+                              backgroundColor: opponentOnline ? "#22c55e" : "#ef4444",
+                            }}
+                          />
+                          <span style={{ fontSize: "10px", color: "var(--text-muted, #94a3b8)" }}>
+                            {opponentOnline ? "Online" : "Offline"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        width: "28px",
+                        height: "28px",
+                        borderRadius: "8px",
+                        background: "linear-gradient(135deg, #fb923c, #ea580c)",
+                        color: "#fff",
+                        fontWeight: 900,
+                        fontSize: "15px",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontSize: isMobile ? "10px" : "12px",
-                        fontWeight: 700,
-                        marginLeft: idx === 0 ? "0px" : "-8px",
-                        boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
-                        textTransform: "uppercase",
+                        boxShadow: "0 2px 6px rgba(251, 146, 60, 0.4)",
+                        flexShrink: 0,
                       }}
                     >
-                      {spec.name?.charAt(0) || "S"}
+                      ○
                     </div>
-                  ))}
-                </div>
-                {spectatorCount > 3 && (
-                  <span style={{
-                    marginLeft: "6px",
-                    fontSize: "11px",
-                    fontWeight: 600,
-                    color: "var(--text-muted, #94a3b8)",
-                  }}>
-                    +{spectatorCount - 3} more
-                  </span>
-                )}
-              </div>
-            )}
-
-            {/* Watching (N) Pill */}
-            <motion.button
-              type="button"
-              onClick={() => setShowSpectatorList((prev) => !prev)}
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: isMobile ? "5px 14px" : "6px 18px",
-                borderRadius: "9999px",
-                backgroundColor: "var(--bg-card, rgba(13, 13, 13, 0.85))",
-                border: `1.5px solid ${isSpectator ? "var(--accent-x, #00FFFF)" : "var(--border-color, rgba(255, 255, 255, 0.15))"}`,
-                color: isSpectator ? "var(--accent-x, #00FFFF)" : "var(--text-main, #e5e7eb)",
-                fontSize: isMobile ? "12px" : "13px",
-                fontWeight: 600,
-                cursor: "pointer",
-                boxShadow: isSpectator
-                  ? "0 0 12px rgba(0, 255, 255, 0.25)"
-                  : "0 2px 8px rgba(0,0,0,0.3)",
-                transition: "all 0.2s ease",
-              }}
-              title="Click to view watching spectators"
-              aria-label="Toggle spectator list"
-            >
-              <Eye style={{ width: "14px", height: "14px" }} />
-              <span>Watching ({spectatorCount})</span>
-              <span style={{ fontSize: "10px", opacity: 0.6, marginLeft: "2px" }}>
-                {showSpectatorList ? "▲" : "▼"}
-              </span>
-            </motion.button>
-          </div>
-
-          {/* Searchable, scrollable list of spectator names */}
-          <AnimatePresence>
-            {showSpectatorList && (
-              <motion.div
-                initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
-                style={{
-                  width: "100%",
-                  maxWidth: isMobile ? "92vw" : "380px",
-                  padding: "12px",
-                  borderRadius: "14px",
-                  backgroundColor: "var(--bg-card, #12121c)",
-                  border: "1.5px solid var(--border-color, rgba(168,85,247,0.3))",
-                  boxShadow: "0 10px 30px rgba(0,0,0,0.6), 0 0 15px rgba(0,0,0,0.3)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "10px",
-                }}
-              >
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  paddingBottom: "8px",
-                  borderBottom: "1px solid var(--border-color, rgba(255,255,255,0.08))",
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <Eye style={{ width: "14px", height: "14px", color: "var(--accent-x, #00FFFF)" }} />
-                    <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-main, #ffffff)" }}>
-                      Spectators ({spectatorCount})
-                    </span>
                   </div>
-                  <button
-                    onClick={() => setShowSpectatorList(false)}
+                ) : (
+                  <div
                     style={{
-                      background: "none",
-                      border: "none",
-                      color: "var(--text-muted, #9ca3af)",
-                      cursor: "pointer",
-                      padding: "2px 6px",
-                      fontSize: "14px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "12px",
+                      borderRadius: "14px",
+                      border: "1.5px dashed rgba(255, 255, 255, 0.18)",
+                      backgroundColor: "rgba(255, 255, 255, 0.02)",
+                      color: "var(--text-muted, #94a3b8)",
+                      fontSize: "13px",
                     }}
-                    aria-label="Close spectators list"
                   >
-                    ✕
-                  </button>
-                </div>
+                    <span style={{ fontStyle: "italic" }}>Waiting for players...</span>
+                    <span style={{ fontSize: "16px", color: "#38bdf8" }}>➕</span>
+                  </div>
+                )}
 
-                {/* Search input */}
-                <input
-                  type="text"
-                  value={spectatorSearchQuery}
-                  onChange={(e) => setSpectatorSearchQuery(e.target.value)}
-                  placeholder="Search spectators..."
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    padding: "6px 10px",
-                    borderRadius: "8px",
-                    backgroundColor: "rgba(255,255,255,0.05)",
-                    border: "1px solid var(--border-color, rgba(255,255,255,0.15))",
-                    color: "var(--text-main, #ffffff)",
-                    fontSize: "12px",
-                    outline: "none",
-                  }}
-                />
-
-                {/* Scrollable list */}
-                <div style={{
-                  maxHeight: "180px",
-                  overflowY: "auto",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "6px",
-                  paddingRight: "4px",
-                }}>
-                  {spectators.filter((s) =>
-                    !spectatorSearchQuery.trim() ||
-                    s.name.toLowerCase().includes(spectatorSearchQuery.toLowerCase().trim())
-                  ).length === 0 ? (
-                    <p style={{
-                      margin: 0,
-                      fontSize: "12px",
-                      color: "var(--text-muted, #6b7280)",
-                      fontStyle: "italic",
-                      textAlign: "center",
-                      padding: "12px 0",
-                    }}>
-                      {spectatorSearchQuery ? "No matching spectators found" : "No spectators currently watching"}
-                    </p>
-                  ) : (
-                    spectators
-                      .filter((s) =>
-                        !spectatorSearchQuery.trim() ||
-                        s.name.toLowerCase().includes(spectatorSearchQuery.toLowerCase().trim())
-                      )
-                      .map((s) => {
-                        const isSelf = s.id === session?.user?.id;
-                        return (
-                          <div
-                            key={s.id}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              padding: "6px 10px",
-                              borderRadius: "8px",
-                              backgroundColor: isSelf ? "rgba(0, 255, 255, 0.08)" : "rgba(255,255,255,0.03)",
-                              border: `1px solid ${isSelf ? "var(--accent-x, #00FFFF)" : "rgba(255,255,255,0.06)"}`,
-                            }}
-                          >
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                              <div style={{
-                                width: "22px",
-                                height: "22px",
-                                borderRadius: "50%",
-                                backgroundColor: "var(--bg-card, #1a1a24)",
-                                border: "1px solid var(--border-color, rgba(255,255,255,0.2))",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontSize: "10px",
-                                fontWeight: 700,
-                                color: isSelf ? "var(--accent-x, #00FFFF)" : "var(--text-main, #ffffff)",
-                                textTransform: "uppercase",
-                              }}>
-                                {s.name?.charAt(0) || "S"}
-                              </div>
-                              <span style={{
-                                fontSize: "12px",
-                                fontWeight: isSelf ? 700 : 500,
-                                color: isSelf ? "var(--accent-x, #00FFFF)" : "var(--text-main, #e5e7eb)",
-                              }}>
-                                {s.name}
-                              </span>
-                            </div>
-                            {isSelf && (
-                              <span style={{
-                                fontSize: "10px",
-                                fontWeight: 700,
-                                color: "var(--accent-x, #00FFFF)",
-                                backgroundColor: "rgba(0, 255, 255, 0.15)",
-                                padding: "1px 6px",
-                                borderRadius: "999px",
-                              }}>
-                                You
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })
-                  )}
-                </div>
-
-                {/* Load More button */}
-                {spectators.length < spectatorCount && spectatorsPage < spectatorsTotalPages && (
-                  <button
+                {/* Spectator Watching Dropdown */}
+                <div style={{ marginTop: "4px" }}>
+                  <motion.button
                     type="button"
-                    disabled={isLoadingSpectators}
-                    onClick={handleLoadMoreSpectators}
+                    onClick={() => setShowSpectatorList((prev) => !prev)}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     style={{
                       width: "100%",
-                      padding: "6px 10px",
-                      borderRadius: "8px",
-                      backgroundColor: "rgba(255, 255, 255, 0.06)",
-                      border: "1px solid var(--border-color, rgba(255, 255, 255, 0.2))",
-                      color: "var(--text-main, #ffffff)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "8px 12px",
+                      borderRadius: "10px",
+                      backgroundColor: "rgba(255, 255, 255, 0.04)",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      color: "var(--text-muted, #94a3b8)",
                       fontSize: "12px",
                       fontWeight: 600,
-                      cursor: isLoadingSpectators ? "not-allowed" : "pointer",
-                      opacity: isLoadingSpectators ? 0.6 : 1,
+                      cursor: "pointer",
                     }}
                   >
-                    {isLoadingSpectators ? "Loading..." : `Load More (${spectators.length} of ${spectatorCount})`}
-                  </button>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <Eye size={14} color="#a855f7" />
+                      <span>Spectators ({spectatorCount})</span>
+                    </div>
+                    <span>{showSpectatorList ? "▲" : "▼"}</span>
+                  </motion.button>
 
-        {/* Voice & Video Call Bar */}
-        <CallBar
-          isPlayer={!isSpectator}
-          isHost={Boolean(session?.user?.id && playerSymbol === "X")}
-          isInCall={isInCall}
-          isRinging={isRinging}
-          myUserId={session?.user?.id || ""}
-          callState={callState}
-          micOn={micOn}
-          cameraOn={cameraOn}
-          isDeafened={isDeafened}
-          mutedByModerator={mutedByModerator}
-          isPendingJoin={isPendingJoin}
-          audioBlocked={audioBlocked}
-          onStartCall={startCall}
-          onJoinCall={joinCall}
-          onLeaveCall={leaveCall}
-          onEndCall={endCall}
-          onToggleMic={toggleMic}
-          onToggleCamera={toggleCamera}
-          onToggleDeafen={toggleDeafen}
-          onChangeCallSetting={changeCallSetting}
-          onResumeAudio={resumeAudio}
-          isPanelOpen={isCallPanelOpen}
-          onTogglePanel={() => setIsCallPanelOpen((prev) => !prev)}
-          isMobile={isMobile}
-        />
-
-        {/* Video Panel */}
-        <VideoPanel
-          isOpen={isCallPanelOpen && (isInCall || callState.participants.length > 0)}
-          onClose={() => setIsCallPanelOpen(false)}
-          myUserId={session?.user?.id || ""}
-          isPlayer={!isSpectator}
-          participants={callState.participants}
-          localStream={localStream}
-          remoteStreams={remoteStreams}
-          peerDiagnostics={peerDiagnostics}
-          speakingUsers={speakingUsers}
-          mutedForMe={mutedForMe}
-          hiddenVideoForMe={hiddenVideoForMe}
-          isDeafened={isDeafened}
-          onToggleMuteForMe={toggleMuteForMe}
-          onToggleHideVideoForMe={toggleHideVideoForMe}
-          onModerateParticipant={moderateParticipant}
-          onAudioBlocked={() => setAudioBlocked(true)}
-          isMobile={isMobile}
-        />
-
-        {/* Game Status - Responsive */}
-        {gameStatus === "waiting" && (
-          <div style={{ textAlign: "center" }}>
-            <LoadingSpinner variant="yellow" size="md" />
-            <p className="neon-text-yellow" style={{
-              marginTop: isMobile ? "12px" : "16px",
-              fontSize: isMobile ? "16px" : "18px",
-            }}>Waiting for opponent...</p>
-          </div>
-        )}
-
-        {gameStatus === "playing" && (
-          <motion.div
-            style={{
-              padding: isMobile ? "12px 16px" : "16px 24px",
-              backgroundColor: timeLeft !== null && timeLeft <= 5
-                ? "rgba(255, 49, 49, 0.12)"
-                : isMyTurn
-                ? "rgba(0, 255, 255, 0.08)"
-                : "rgba(13, 13, 13, 0.6)",
-              borderRadius: "14px",
-              border: `2px solid ${
-                timeLeft !== null && timeLeft <= 5
-                  ? "#FF3131"
-                  : isMyTurn
-                  ? "#00FFFF"
-                  : "var(--border-color, #1a1a1a)"
-              }`,
-              width: "100%",
-              maxWidth: isMobile ? "100%" : "420px",
-              boxShadow: timeLeft !== null && timeLeft <= 5
-                ? "0 0 22px rgba(255, 49, 49, 0.55)"
-                : isMyTurn
-                ? "0 0 16px rgba(0, 255, 255, 0.25)"
-                : "none",
-              transition: "all 0.3s ease",
-            }}
-            animate={
-              timeLeft !== null && timeLeft <= 5
-                ? { scale: [1, 1.02, 1] }
-                : {}
-            }
-            transition={{ duration: 0.6, repeat: Infinity }}
-          >
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: turnDuration > 0 && typeof timeLeft === "number" ? "10px" : "0",
-            }}>
-              <p className={!isSpectator && isMyTurn ? "neon-text-cyan" : ""} style={{
-                fontSize: isMobile ? "15px" : "18px",
-                fontWeight: "bold",
-                margin: 0,
-                color: timeLeft !== null && timeLeft <= 5 ? "#FF3131" : (!isSpectator && isMyTurn) ? "#00FFFF" : "var(--text-main, #e5e7eb)",
-                textShadow: timeLeft !== null && timeLeft <= 5 ? "0 0 8px #FF3131" : undefined,
-              }}>
-                {isSpectator
-                  ? `⚡ ${currentTurn === "X" ? player1Name : player2Name}'s Turn (${currentTurn})`
-                  : isMyTurn
-                  ? "⚡ Your Turn!"
-                  : "Opponent's Turn..."}
-              </p>
-
-              {turnDuration > 0 && typeof timeLeft === "number" && (
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  padding: "3px 10px",
-                  borderRadius: "999px",
-                  backgroundColor: timeLeft <= 5 ? "rgba(255, 49, 49, 0.2)" : "rgba(255, 255, 255, 0.06)",
-                  border: `1px solid ${timeLeft <= 5 ? "#FF3131" : "rgba(255, 255, 255, 0.15)"}`,
-                  color: timeLeft <= 5 ? "#FF3131" : "var(--text-main, #e5e7eb)",
-                  fontWeight: 700,
-                  fontSize: isMobile ? "12px" : "13px",
-                  boxShadow: timeLeft <= 5 ? "0 0 10px rgba(255, 49, 49, 0.5)" : "none",
-                }}>
-                  {timeLeft <= 5 ? (
-                    <AlertTriangle style={{ width: "14px", height: "14px", color: "#FF3131" }} />
-                  ) : (
-                    <Timer style={{ width: "14px", height: "14px", color: isMyTurn ? "#00FFFF" : "#9ca3af" }} />
-                  )}
-                  <span>{timeLeft}s</span>
+                  <AnimatePresence>
+                    {showSpectatorList && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        style={{
+                          overflow: "hidden",
+                          marginTop: "8px",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "6px",
+                        }}
+                      >
+                        <input
+                          type="text"
+                          value={spectatorSearchQuery}
+                          onChange={(e) => setSpectatorSearchQuery(e.target.value)}
+                          placeholder="Search spectators..."
+                          style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            padding: "6px 10px",
+                            borderRadius: "8px",
+                            backgroundColor: "rgba(255,255,255,0.06)",
+                            border: "1px solid rgba(255,255,255,0.12)",
+                            color: "#fff",
+                            fontSize: "12px",
+                            outline: "none",
+                          }}
+                        />
+                        <div
+                          style={{
+                            maxHeight: "140px",
+                            overflowY: "auto",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "4px",
+                          }}
+                        >
+                          {spectators.filter(
+                            (s) =>
+                              !spectatorSearchQuery.trim() ||
+                              s.name.toLowerCase().includes(spectatorSearchQuery.toLowerCase().trim())
+                          ).length === 0 ? (
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: "11px",
+                                color: "var(--text-muted, #64748b)",
+                                fontStyle: "italic",
+                                textAlign: "center",
+                                padding: "8px 0",
+                              }}
+                            >
+                              No spectators watching
+                            </p>
+                          ) : (
+                            spectators
+                              .filter(
+                                (s) =>
+                                  !spectatorSearchQuery.trim() ||
+                                  s.name.toLowerCase().includes(spectatorSearchQuery.toLowerCase().trim())
+                              )
+                              .map((s) => {
+                                const isSelf = s.id === session?.user?.id;
+                                return (
+                                  <div
+                                    key={s.id}
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "space-between",
+                                      padding: "5px 8px",
+                                      borderRadius: "6px",
+                                      backgroundColor: isSelf
+                                        ? "rgba(56, 189, 248, 0.15)"
+                                        : "rgba(255, 255, 255, 0.03)",
+                                      fontSize: "11px",
+                                      color: isSelf ? "#38bdf8" : "#cbd5e1",
+                                    }}
+                                  >
+                                    <span>{s.name}</span>
+                                    {isSelf && (
+                                      <span
+                                        style={{
+                                          fontSize: "9px",
+                                          fontWeight: 700,
+                                          padding: "1px 5px",
+                                          borderRadius: "999px",
+                                          backgroundColor: "rgba(56, 189, 248, 0.25)",
+                                        }}
+                                      >
+                                        You
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-              )}
+              </NeonCard>
             </div>
+          )}
 
-            {/* Synchronized Countdown Bar */}
-            {turnDuration > 0 && typeof timeLeft === "number" && (
-              <div style={{
-                width: "100%",
-                height: "6px",
-                backgroundColor: "rgba(255, 255, 255, 0.08)",
-                borderRadius: "3px",
-                overflow: "hidden",
-                position: "relative",
-              }}>
-                <motion.div
-                  style={{
-                    height: "100%",
-                    borderRadius: "3px",
-                    backgroundColor: timeLeft <= 5 ? "#FF3131" : isMyTurn ? "#00FFFF" : "var(--accent-o, #FF00FF)",
-                    boxShadow: timeLeft <= 5 ? "0 0 12px rgba(255, 49, 49, 0.9)" : "0 0 8px rgba(0, 255, 255, 0.4)",
-                  }}
-                  initial={false}
-                  animate={{
-                    width: `${Math.min(100, Math.max(0, (timeLeft / turnDuration) * 100))}%`,
-                  }}
-                  transition={{ ease: "linear", duration: 0.1 }}
-                />
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {gameStatus === "finished" && winner && (
-          <div style={{
-            textAlign: "center",
-            padding: isMobile ? "16px 20px" : "24px",
-            backgroundColor: isSpectator
-              ? (winner === "draw" ? "rgba(255,215,0,0.1)" : "rgba(0,255,65,0.1)")
-              : (winner === playerSymbol ? "rgba(0,255,65,0.1)" : winner === "draw" ? "rgba(255,215,0,0.1)" : "rgba(255,49,49,0.1)"),
-            borderRadius: "16px",
-            border: `2px solid ${
-              isSpectator
-                ? (winner === "draw" ? "#FFD700" : "#00FF41")
-                : (winner === playerSymbol ? "#00FF41" : winner === "draw" ? "#FFD700" : "#FF3131")
-            }`,
-            width: "100%",
-          }}>
-            <p className={
-              isSpectator
-                ? (winner === "draw" ? "neon-text-yellow" : "neon-text-green")
-                : (winner === playerSymbol ? "neon-text-green" : winner === "draw" ? "neon-text-yellow" : "neon-text-red")
-            }
+          {/* CENTER PANEL: Score Pill, Turn Timer, CallBar, VideoPanel, Board, Status, Rematch */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: isMobile ? "14px" : "18px",
+              width: "100%",
+              order: isMobile ? 1 : 2,
+            }}
+          >
+            {/* Top Score / Matchup Bar - Matching Reference Image 1 & 2 */}
+            <div
               style={{
-                fontSize: isMobile ? "clamp(20px, 6vw, 28px)" : "32px",
-                fontWeight: "bold",
-                margin: 0,
-              }}>
-              {isSpectator
-                ? (winner === "draw" ? "🤝 Game Ended in a Draw!" : `🏆 ${winner === "X" ? player1Name : player2Name} (${winner}) Won!`)
-                : (winner === playerSymbol ? "🎉 You Won!" : winner === "draw" ? "🤝 Draw!" : "😔 You Lost")}
-            </p>
-          </div>
-        )}
-
-        <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? "16px" : "24px", width: "100%", alignItems: isMobile ? "center" : "flex-start", justifyContent: "center" }}>
-          <div style={{ display: "flex", justifyContent: "center" }}>
-            <div style={{
-              position: "relative",
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: cellGap,
-              padding: boardPadding,
-              backgroundColor: "var(--bg-card, rgba(13,13,13,0.8))",
-              borderRadius: isMobile ? "16px" : "24px",
-              border: "1px solid var(--border-color, #1a1a1a)",
-              width: boardSize,
-              maxWidth: "100%",
-              boxSizing: "border-box",
-            }}>
-              {/* Floating Reactions Overlay over the game board */}
-              <FloatingReactionsOverlay
-                reactions={floatingReactions}
-                currentUserId={session?.user?.id}
-              />
-
-              {board.map((cell, index) => (
-                <motion.button
-                  key={index}
-                  onClick={() => {
-                    if (!isSpectator && isMyTurn && cell === null && socket) {
-                      socket.emit("make-move", {
-                        roomId,
-                        cellIndex: index,
-                        playerId: session?.user?.id,
-                      });
-                    }
-                  }}
-                  disabled={cell !== null || isSpectator || !isMyTurn || gameStatus !== "playing"}
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)",
+                alignItems: "center",
+                padding: isMobile ? "8px 10px" : "10px 20px",
+                borderRadius: "9999px",
+                background: "rgba(15, 23, 42, 0.8)",
+                border: "1.5px solid rgba(255, 255, 255, 0.12)",
+                backdropFilter: "blur(12px)",
+                boxShadow: "0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
+                width: "100%",
+                maxWidth: isMobile ? "100%" : "440px",
+                boxSizing: "border-box",
+                gap: isMobile ? "4px" : "8px",
+              }}
+            >
+              {/* Player X */}
+              <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "6px" : "8px", minWidth: 0, overflow: "hidden" }}>
+                <div
                   style={{
-                    width: cellSize,
-                    height: cellSize,
-                    backgroundColor: cell ? "var(--bg-card-solid, #111)" : "var(--bg-card, rgba(17,17,17,0.8))",
-                    border: winningLine?.includes(index) ? "2px solid #FFD700" : "2px solid var(--border-color, #1a1a1a)",
-                    borderRadius: isMobile ? "8px" : "12px",
+                    width: isMobile ? "30px" : "36px",
+                    height: isMobile ? "30px" : "36px",
+                    borderRadius: "50%",
+                    background: "linear-gradient(135deg, #38bdf8, #0284c7)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    cursor: cell || isSpectator || !isMyTurn || gameStatus !== "playing" ? "default" : "pointer",
-                    transition: "all 0.3s",
-                    boxShadow: winningLine?.includes(index) ? "0 0 20px #FFD700" : "none",
+                    color: "#fff",
+                    fontWeight: 900,
+                    fontSize: isMobile ? "15px" : "18px",
+                    boxShadow:
+                      currentTurn === "X" && gameStatus === "playing"
+                        ? "0 0 14px #38bdf8"
+                        : "none",
+                    border:
+                      currentTurn === "X" && gameStatus === "playing"
+                        ? "2px solid #ffffff"
+                        : "2px solid transparent",
+                    flexShrink: 0,
+                  }}
+                >
+                  ✕
+                </div>
+                <div style={{ minWidth: 0, overflow: "hidden" }}>
+                  <div
+                    style={{
+                      fontSize: isMobile ? "12px" : "13px",
+                      fontWeight: 700,
+                      color: "#fff",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {player1Name}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "10px",
+                      color:
+                        currentTurn === "X" && gameStatus === "playing"
+                          ? "#38bdf8"
+                          : "rgba(255,255,255,0.6)",
+                      fontWeight: 700,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {currentTurn === "X" && gameStatus === "playing" ? "⚡ TURN" : "PLAYER X"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Center Golden VS Badge */}
+              <div
+                style={{
+                  width: isMobile ? "30px" : "42px",
+                  height: isMobile ? "30px" : "42px",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                  border: "2px solid #fef3c7",
+                  boxShadow:
+                    "0 4px 12px rgba(245, 158, 11, 0.5), inset 0 1px 0 rgba(255,255,255,0.4)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#ffffff",
+                  fontFamily: "var(--font-display, inherit)",
+                  fontWeight: 900,
+                  fontSize: isMobile ? "11px" : "14px",
+                  letterSpacing: "0.5px",
+                  flexShrink: 0,
+                  margin: isMobile ? "0 2px" : "0 8px",
+                }}
+              >
+                VS
+              </div>
+
+              {/* Player O */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: isMobile ? "6px" : "8px",
+                  justifyContent: "flex-end",
+                  minWidth: 0,
+                  overflow: "hidden",
+                }}
+              >
+                <div style={{ minWidth: 0, overflow: "hidden", textAlign: "right" }}>
+                  <div
+                    style={{
+                      fontSize: isMobile ? "12px" : "13px",
+                      fontWeight: 700,
+                      color: "#fff",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {player2Name}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "10px",
+                      color:
+                        currentTurn === "O" && gameStatus === "playing"
+                          ? "#fb923c"
+                          : "rgba(255,255,255,0.6)",
+                      fontWeight: 700,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {currentTurn === "O" && gameStatus === "playing" ? "⚡ TURN" : "PLAYER O"}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: isMobile ? "30px" : "36px",
+                    height: isMobile ? "30px" : "36px",
+                    borderRadius: "50%",
+                    background: "linear-gradient(135deg, #fb923c, #ea580c)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#fff",
+                    fontWeight: 900,
+                    fontSize: isMobile ? "15px" : "18px",
+                    boxShadow:
+                      currentTurn === "O" && gameStatus === "playing"
+                        ? "0 0 14px #fb923c"
+                        : "none",
+                    border:
+                      currentTurn === "O" && gameStatus === "playing"
+                        ? "2px solid #ffffff"
+                        : "2px solid transparent",
+                    flexShrink: 0,
+                  }}
+                >
+                  ○
+                </div>
+              </div>
+            </div>
+
+            {/* Turn Timer Countdown Bar (if turnDuration > 0) */}
+            {turnDuration > 0 && typeof timeLeft === "number" && gameStatus === "playing" && (
+              <div
+                style={{
+                  width: "100%",
+                  maxWidth: isMobile ? "100%" : "440px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "6px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "0 4px",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      color: timeLeft <= 5 ? "#ef4444" : "#94a3b8",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    {timeLeft <= 5 ? <AlertTriangle size={13} /> : <Timer size={13} />}
+                    <span>{timeLeft <= 5 ? "Hurry up!" : "Turn timer"}</span>
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "12px",
+                      fontWeight: 800,
+                      color: timeLeft <= 5 ? "#ef4444" : "#ffffff",
+                    }}
+                  >
+                    {timeLeft}s
+                  </span>
+                </div>
+                <div
+                  style={{
+                    width: "100%",
+                    height: "6px",
+                    backgroundColor: "rgba(255, 255, 255, 0.08)",
+                    borderRadius: "3px",
                     overflow: "hidden",
                   }}
-                  whileHover={!isSpectator && isMyTurn && !cell && gameStatus === "playing" ? { scale: 1.05, borderColor: "var(--accent-x, #00FFFF44)" } : {}}
-                  whileTap={!isSpectator && isMyTurn && !cell && gameStatus === "playing" ? { scale: 0.95 } : {}}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.2, delay: index * 0.03 }}
                 >
-                  {cell && (
-                    <div style={{ width: cellSize * 0.65, height: cellSize * 0.65 }}>
-                      <GameSkinIcon symbol={cell} size={cellSize * 0.65} />
-                    </div>
-                  )}
-                </motion.button>
-              ))}
+                  <motion.div
+                    style={{
+                      height: "100%",
+                      borderRadius: "3px",
+                      backgroundColor:
+                        timeLeft <= 5 ? "#ef4444" : isMyTurn ? "#38bdf8" : "#fb923c",
+                      boxShadow:
+                        timeLeft <= 5
+                          ? "0 0 12px rgba(239, 68, 68, 0.8)"
+                          : "0 0 8px rgba(56, 189, 248, 0.4)",
+                    }}
+                    initial={false}
+                    animate={{
+                      width: `${Math.min(100, Math.max(0, (timeLeft / turnDuration) * 100))}%`,
+                    }}
+                    transition={{ ease: "linear", duration: 0.1 }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* WebRTC Voice & Video Call Bar */}
+            <CallBar
+              isPlayer={!isSpectator}
+              isHost={Boolean(session?.user?.id && playerSymbol === "X")}
+              isInCall={isInCall}
+              isRinging={isRinging}
+              myUserId={session?.user?.id || ""}
+              callState={callState}
+              micOn={micOn}
+              cameraOn={cameraOn}
+              isDeafened={isDeafened}
+              mutedByModerator={mutedByModerator}
+              isPendingJoin={isPendingJoin}
+              audioBlocked={audioBlocked}
+              onStartCall={startCall}
+              onJoinCall={joinCall}
+              onLeaveCall={leaveCall}
+              onEndCall={endCall}
+              onToggleMic={toggleMic}
+              onToggleCamera={toggleCamera}
+              onToggleDeafen={toggleDeafen}
+              onChangeCallSetting={changeCallSetting}
+              onResumeAudio={resumeAudio}
+              isPanelOpen={isCallPanelOpen}
+              onTogglePanel={() => setIsCallPanelOpen((prev) => !prev)}
+              isMobile={isMobile}
+            />
+
+            {/* Video Panel */}
+            <VideoPanel
+              isOpen={isCallPanelOpen && (isInCall || callState.participants.length > 0)}
+              onClose={() => setIsCallPanelOpen(false)}
+              myUserId={session?.user?.id || ""}
+              isPlayer={!isSpectator}
+              participants={callState.participants}
+              localStream={localStream}
+              remoteStreams={remoteStreams}
+              peerDiagnostics={peerDiagnostics}
+              speakingUsers={speakingUsers}
+              mutedForMe={mutedForMe}
+              hiddenVideoForMe={hiddenVideoForMe}
+              isDeafened={isDeafened}
+              onToggleMuteForMe={toggleMuteForMe}
+              onToggleHideVideoForMe={toggleHideVideoForMe}
+              onModerateParticipant={moderateParticipant}
+              onAudioBlocked={() => setAudioBlocked(true)}
+              isMobile={isMobile}
+            />
+
+            {/* 3x3 Game Board */}
+            <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
+              <GameBoard
+                board={board}
+                winningLine={winningLine}
+                isSpectator={isSpectator}
+                isMyTurn={isMyTurn}
+                gameStatus={gameStatus}
+                cellSize={cellSize}
+                cellGap={cellGap}
+                boardPadding={boardPadding}
+                boardSize={boardSize}
+                isMobile={isMobile}
+                floatingReactions={floatingReactions}
+                currentUserId={session?.user?.id}
+                onCellClick={handleCellClick}
+              />
             </div>
+
+            {/* Status Hint Pill below board */}
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 18px",
+                borderRadius: "9999px",
+                backgroundColor: "rgba(15, 23, 42, 0.8)",
+                border: "1px solid rgba(255, 255, 255, 0.12)",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+              }}
+            >
+              <span
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  backgroundColor:
+                    gameStatus === "playing"
+                      ? isMyTurn
+                        ? "#22c55e"
+                        : "#f59e0b"
+                      : gameStatus === "waiting"
+                      ? "#38bdf8"
+                      : "#a855f7",
+                }}
+              />
+              <span style={{ fontSize: "13px", fontWeight: 700, color: "#e2e8f0" }}>
+                {gameStatus === "waiting"
+                  ? "Room is ready! Waiting for opponent..."
+                  : gameStatus === "playing"
+                  ? isSpectator
+                    ? `${currentTurn === "X" ? player1Name : player2Name}'s Turn (${currentTurn})`
+                    : isMyTurn
+                    ? "Make your move..."
+                    : "Opponent is thinking..."
+                  : winner === "draw"
+                  ? "Game ended in a draw!"
+                  : isSpectator
+                  ? `🏆 ${winner === "X" ? player1Name : player2Name} won!`
+                  : winner === playerSymbol
+                  ? "🎉 You Won!"
+                  : "😔 You Lost"}
+              </span>
+            </div>
+
+            {/* Rematch Waiting Banner (when requester is waiting for opponent) */}
+            {rematchAccepted && !rematchRequested && !isSpectator && gameStatus === "finished" && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                  padding: "10px 14px",
+                  borderRadius: "14px",
+                  backgroundColor: "rgba(56, 189, 248, 0.12)",
+                  border: "1px solid rgba(56, 189, 248, 0.35)",
+                  color: "#7dd3fc",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  width: "100%",
+                  maxWidth: "440px",
+                  boxSizing: "border-box",
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
+                  marginBottom: "6px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0, overflow: "hidden" }}>
+                  <LoadingSpinner size="sm" variant="yellow" />
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    Rematch requested. Waiting for {opponentName}...
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (roomId && session?.user?.id) {
+                      socket?.emit("reject-rematch", {
+                        roomId: canonicalRoomIdRef.current || roomId,
+                        playerId: session.user.id,
+                      });
+                    }
+                    setRematchAccepted(false);
+                  }}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "8px",
+                    backgroundColor: "rgba(255, 255, 255, 0.1)",
+                    border: "1px solid rgba(255, 255, 255, 0.2)",
+                    color: "#ffffff",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    flexShrink: 0,
+                    minHeight: "44px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  Cancel
+                </button>
+              </motion.div>
+            )}
+
+            {/* Rematch & Finished Controls */}
+            {gameStatus === "finished" && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                  width: "100%",
+                }}
+              >
+                {!isSpectator && !rematchRequested && !rematchAccepted && (
+                  <NeonButton
+                    variant="primary"
+                    size="md"
+                    onClick={handleRematch}
+                    style={{ flex: "1 1 140px", minWidth: 0, minHeight: "44px" }}
+                  >
+                    Play Again
+                  </NeonButton>
+                )}
+
+                {gameId && (
+                  <NeonButton
+                    variant="blue"
+                    size="md"
+                    onClick={() => {
+                      playSfx("click");
+                      router.push(`/replay/${gameId}`);
+                    }}
+                    style={{ flex: "1 1 140px", minWidth: 0, minHeight: "44px" }}
+                  >
+                    <Play size={16} fill="#ffffff" style={{ marginRight: "6px" }} />
+                    Watch Replay
+                  </NeonButton>
+                )}
+
+                <NeonButton
+                  variant="dark-blue"
+                  size="md"
+                  onClick={() => {
+                    playSfx("click");
+                    router.push("/history");
+                  }}
+                  style={{ flex: "1 1 140px", minWidth: 0, minHeight: "44px" }}
+                >
+                  <History size={16} style={{ marginRight: "6px" }} />
+                  History
+                </NeonButton>
+
+                <NeonButton
+                  variant="dark-blue"
+                  size="md"
+                  onClick={handleLeaveRoom}
+                  style={{ flex: "1 1 140px", minWidth: 0, minHeight: "44px" }}
+                >
+                  Back to Lobby
+                </NeonButton>
+              </div>
+            )}
           </div>
 
-          <div style={{ width: isMobile ? "100%" : "340px", maxWidth: "100%" }}>
+          {/* RIGHT PANEL: Live Chat */}
+          <div
+            style={{
+              width: "100%",
+              order: isMobile ? 2 : 3,
+            }}
+          >
             <ChatBox
               messages={chatMessages}
               newMessage={chatInput}
@@ -1660,150 +2100,145 @@ export default function GameRoomPage() {
           </div>
         </div>
 
-        {/* Rematch Section - Responsive */}
-        {gameStatus === "finished" && (
-          <div style={{
-            display: "flex",
-            gap: isMobile ? "12px" : "16px",
-            flexDirection: "column",
-            alignItems: "center",
-            width: "100%",
-          }}>
-            {isSpectator ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
-                <p style={{ color: "var(--text-muted, #9ca3af)", fontSize: isMobile ? "13px" : "14px", margin: 0, textAlign: "center" }}>
-                  👁️ Spectating • Waiting for players to start rematch or leave
-                </p>
-                <motion.button
-                  onClick={handleLeaveRoom}
-                  whileHover={{
-                    scale: 1.05,
-                    y: -2,
-                    boxShadow: "0 0 25px rgba(255,255,255,.5)",
-                  }}
-                  whileTap={{ scale: 0.97 }}
-                  style={gameButtonStyle(
-                    "#ffffff",
-                    "0 0 15px rgba(255,255,255,.25)",
-                    "rgba(255,255,255,0.03)",
-                    isMobile
-                  )}
-                >
-                  Back to Lobby
-                </motion.button>
+        {/* End of game Win / Lose / Draw Overlay */}
+        {gameStatus === "finished" && winner && (
+          <WinLoseDrawOverlay
+            isOpen={showGameOverOverlay}
+            onClose={() => setShowGameOverOverlay(false)}
+            isSpectator={isSpectator}
+            winner={winner === "draw" ? "draw" : winner === playerSymbol ? "human" : "ai"}
+            winnerName={
+              isSpectator
+                ? winner === "draw"
+                  ? undefined
+                  : winner === "X"
+                  ? player1Name
+                  : player2Name
+                : winner === playerSymbol
+                ? "You"
+                : opponentName
+            }
+            onPlayAgain={!isSpectator ? handleRematch : undefined}
+            onHome={handleLeaveRoom}
+            onWatchReplay={gameId ? () => router.push(`/replay/${gameId}`) : undefined}
+          />
+        )}
+
+        {/* Rematch Prompt Modal (zIndex: 10000 - Top of everything) */}
+        {rematchRequested && !isSpectator && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 10000,
+              backgroundColor: "rgba(0, 0, 0, 0.75)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              display: "flex",
+              alignItems: isMobile ? "flex-end" : "center",
+              justifyContent: "center",
+              padding: isMobile ? 0 : "20px",
+            }}
+          >
+            <motion.div
+              initial={isMobile ? { y: "100%" } : { scale: 0.9, opacity: 0 }}
+              animate={isMobile ? { y: 0 } : { scale: 1, opacity: 1 }}
+              exit={isMobile ? { y: "100%" } : { scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              style={{
+                width: "100%",
+                maxWidth: isMobile ? "100%" : "440px",
+                backgroundColor: "var(--bg-card, #131b2e)",
+                border: "1.5px solid var(--border-color, rgba(255, 255, 255, 0.15))",
+                borderRadius: isMobile ? "24px 24px 0 0" : "24px",
+                padding: isMobile ? "24px 20px max(24px, env(safe-area-inset-bottom))" : "28px",
+                boxShadow: "0 20px 60px rgba(0, 0, 0, 0.6)",
+                textAlign: "center",
+                boxSizing: "border-box",
+              }}
+            >
+              <div
+                style={{
+                  width: "56px",
+                  height: "56px",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #FFB703 0%, #FB8500 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 14px",
+                  boxShadow: "0 6px 18px rgba(251, 133, 0, 0.45)",
+                }}
+              >
+                <RefreshCw style={{ width: "26px", height: "26px", color: "#1a1000" }} />
               </div>
-            ) : !rematchRequested ? (
-              <>
-                <motion.button
-                  onClick={handleRematch}
-                  disabled={rematchAccepted}
-                  whileHover={{
-                    scale: 1.05,
-                    y: -2,
-                    boxShadow: "0 0 25px rgba(255,215,0,.7)",
-                  }}
-                  whileTap={{ scale: 0.97 }}
-                  style={gameButtonStyle(
-                    "#FFD700",
-                    "0 0 15px rgba(255,215,0,.45)",
-                    "rgba(255,255,255,0.03)",
-                    isMobile
-                  )}
+
+              <h3
+                className="game-title-3d"
+                style={{
+                  fontSize: isMobile ? "22px" : "24px",
+                  margin: "0 0 8px",
+                  color: "#ffffff",
+                }}
+              >
+                Rematch Request!
+              </h3>
+
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: "var(--text-secondary, #c2d6ff)",
+                  margin: "0 0 24px",
+                  lineHeight: 1.5,
+                }}
+              >
+                <strong style={{ color: "#38bdf8" }}>{opponentName}</strong> wants a rematch. Do you accept the challenge?
+              </p>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: isMobile ? "column" : "row",
+                  gap: "12px",
+                  justifyContent: "center",
+                }}
+              >
+                <NeonButton
+                  variant="primary"
+                  size="lg"
+                  fullWidth={isMobile}
+                  onClick={handleAcceptRematch}
+                  style={{ minHeight: "48px", minWidth: isMobile ? "100%" : "150px" }}
                 >
-                  {rematchAccepted ? "Waiting for Opponent..." : "Play Again"}
-                </motion.button>
-                {gameId && (
-                  <motion.button
-                    onClick={() => {
-                      playSfx("click");
-                      router.push(`/replay/${gameId}`);
-                    }}
-                    whileHover={{
-                      scale: 1.05,
-                      y: -2,
-                      boxShadow: "0 0 25px rgba(0,255,255,.7)",
-                    }}
-                    whileTap={{ scale: 0.97 }}
-                    style={gameButtonStyle(
-                      "#00FFFF",
-                      "0 0 15px rgba(0,255,255,.45)",
-                      "rgba(0,255,255,0.08)",
-                      isMobile
-                    )}
-                  >
-                    <Play size={18} style={{ marginRight: "8px" }} fill="#00FFFF" />
-                    Watch Replay
-                  </motion.button>
-                )}
-                <motion.button
-                  onClick={handleLeaveRoom}
-                  whileHover={{
-                    scale: 1.05,
-                    y: -2,
-                    boxShadow: "0 0 25px rgba(255,255,255,.5)",
-                  }}
-                  whileTap={{ scale: 0.97 }}
-                  style={gameButtonStyle(
-                    "#ffffff",
-                    "0 0 15px rgba(255,255,255,.25)",
-                    "rgba(255,255,255,0.03)",
-                    isMobile
-                  )}
+                  Accept
+                </NeonButton>
+                <NeonButton
+                  variant="ghost"
+                  size="lg"
+                  fullWidth={isMobile}
+                  onClick={handleRejectRematch}
+                  style={{ minHeight: "48px", minWidth: isMobile ? "100%" : "130px" }}
                 >
-                  Back to Lobby
-                </motion.button>
-              </>
-            ) : (
-              <>
-                <p className="neon-text-yellow" style={{
-                  fontSize: isMobile ? "16px" : "18px",
-                  fontWeight: "bold",
-                  marginBottom: "8px",
-                  textAlign: "center",
-                }}>
-                  Opponent wants a rematch!
-                </p>
-                <div style={{ display: "flex", gap: isMobile ? "12px" : "16px" }}>
-                  <motion.button
-                    onClick={handleAcceptRematch}
-                    whileHover={{
-                      scale: 1.05,
-                      y: -2,
-                      boxShadow: "0 0 25px rgba(0,255,65,.6)",
-                    }}
-                    whileTap={{ scale: 0.97 }}
-                    style={gameButtonStyle(
-                      "#00FF41",
-                      "0 0 15px rgba(0,255,65,.45)",
-                      "rgba(255,255,255,0.03)",
-                      isMobile
-                    )}
-                  >
-                    Accept
-                  </motion.button>
-                  <motion.button
-                    onClick={handleRejectRematch}
-                    whileHover={{
-                      scale: 1.05,
-                      y: -2,
-                      boxShadow: "0 0 25px rgba(255,49,49,.6)",
-                    }}
-                    whileTap={{ scale: 0.97 }}
-                    style={gameButtonStyle(
-                      "#FF3131",
-                      "0 0 15px rgba(255,49,49,.45)",
-                      "rgba(255,255,255,0.03)",
-                      isMobile
-                    )}
-                  >
-                    Reject
-                  </motion.button>
-                </div>
-              </>
-            )}
+                  Reject
+                </NeonButton>
+              </div>
+            </motion.div>
           </div>
         )}
-        {/* Call Modals (Incoming call, spectator join requests) */}
+
+        {/* Dedicated persistent audio elements: OUTSIDE visual tiles/video panel, always mounted while in call */}
+        {(isInCall || callState.active || callState.participants.length > 0) && (
+          <RemoteAudioElements
+            participants={callState.participants}
+            myUserId={session?.user?.id || ""}
+            remoteStreams={remoteStreams}
+            isDeafened={isDeafened}
+            mutedForMe={mutedForMe}
+            onAudioBlocked={() => setAudioBlocked(true)}
+          />
+        )}
+
+        {/* Call Modals */}
         <CallModals
           incomingCall={incomingCall}
           incomingJoinRequest={incomingJoinRequest}
@@ -1815,8 +2250,81 @@ export default function GameRoomPage() {
   );
 }
 
+// Memoized Game Board Component
+interface GameBoardProps {
+  board: CellValue[];
+  winningLine: number[] | null;
+  isSpectator: boolean;
+  isMyTurn: boolean;
+  gameStatus: "waiting" | "playing" | "finished";
+  cellSize: number;
+  cellGap: number;
+  boardPadding: number;
+  boardSize: number;
+  isMobile: boolean;
+  floatingReactions: ActiveReaction[];
+  currentUserId?: string;
+  onCellClick: (index: number) => void;
+}
+
+const GameBoard = React.memo(function GameBoard({
+  board,
+  winningLine,
+  isSpectator,
+  isMyTurn,
+  gameStatus,
+  cellSize,
+  cellGap,
+  boardPadding,
+  boardSize,
+  isMobile,
+  floatingReactions,
+  currentUserId,
+  onCellClick,
+}: GameBoardProps) {
+  return (
+    <div
+      style={{
+        position: "relative",
+        display: "grid",
+        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+        gap: cellGap,
+        padding: boardPadding,
+        backgroundColor: "rgba(15, 23, 42, 0.8)",
+        borderRadius: isMobile ? "20px" : "28px",
+        border: "1.5px solid rgba(255, 255, 255, 0.12)",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)",
+        backdropFilter: "blur(14px)",
+        width: "100%",
+        maxWidth: "min(100%, calc(100vw - 32px), 520px)",
+        aspectRatio: "1 / 1",
+        boxSizing: "border-box",
+      }}
+    >
+      {/* Floating Reactions Overlay over the game board */}
+      <FloatingReactionsOverlay
+        reactions={floatingReactions}
+        currentUserId={currentUserId}
+      />
+
+      {board.map((cell, index) => (
+        <GameCell
+          key={index}
+          value={cell}
+          index={index}
+          onClick={() => onCellClick(index)}
+          disabled={cell !== null || isSpectator || !isMyTurn || gameStatus !== "playing"}
+          isWinningCell={winningLine?.includes(index)}
+          isLastMove={false}
+          playerSymbol={null}
+        />
+      ))}
+    </div>
+  );
+});
+
 // Player Card Component - Responsive
-function PlayerCard({
+const PlayerCard = React.memo(function PlayerCard({
   name,
   symbol,
   isActive,
@@ -1853,10 +2361,11 @@ function PlayerCard({
         border: `2px solid ${isActive ? color : "var(--border-color, #1a1a1a)"}`,
         backgroundColor: isUrgent ? "rgba(255, 49, 49, 0.08)" : "var(--bg-card, rgba(13,13,13,0.8))",
         boxShadow: isActive ? (isUrgent ? "0 0 24px rgba(255,49,49,0.55)" : `0 0 20px ${color}33`) : "none",
-        minWidth: isMobile ? "140px" : "200px",
+        minWidth: 0,
         flex: isMobile ? 1 : "none",
         maxWidth: isMobile ? "180px" : "none",
         position: "relative",
+        boxSizing: "border-box",
       }}
       animate={
         isActive
@@ -1921,7 +2430,7 @@ function PlayerCard({
           )}
         </div>
       </div>
-      {isActive && typeof timeLeft === "number" && (
+      {isActive && (turnDuration ?? 0) > 0 && typeof timeLeft === "number" && (
         <motion.div
           style={{
             display: "flex",
@@ -1959,4 +2468,4 @@ function PlayerCard({
       )}
     </motion.div>
   );
-}
+});

@@ -37,10 +37,12 @@ export function CallModals({
             transition={{ duration: 0.25 }}
             style={{
               position: "fixed",
-              bottom: "24px",
-              right: "24px",
-              zIndex: 9999,
-              width: "320px",
+              bottom: "max(16px, env(safe-area-inset-bottom))",
+              right: "clamp(12px, 3vw, 24px)",
+              zIndex: 11000,
+              width: "min(320px, calc(100vw - 24px))",
+              maxWidth: "calc(100vw - 24px)",
+              boxSizing: "border-box",
               backgroundColor: "var(--bg-card, rgba(13,13,13,0.96))",
               border: "2px solid var(--accent-x, #00FFFF)",
               boxShadow: "0 0 25px rgba(0, 255, 255, 0.4)",
@@ -64,27 +66,31 @@ export function CallModals({
                   alignItems: "center",
                   justifyContent: "center",
                   color: "#00FFFF",
+                  flexShrink: 0,
                 }}
               >
                 {incomingCall.withVideo ? <Video size={20} /> : <PhoneCall size={20} />}
               </motion.div>
 
-              <div>
-                <h4 style={{ margin: 0, fontSize: "14px", fontWeight: 700, color: "#fff" }}>
+              <div style={{ minWidth: 0, overflow: "hidden" }}>
+                <h4 style={{ margin: 0, fontSize: "14px", fontWeight: 700, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   Incoming {incomingCall.withVideo ? "Video" : "Voice"} Call
                 </h4>
-                <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "var(--text-muted, #9ca3af)" }}>
+                <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "var(--text-muted, #9ca3af)", overflow: "hidden", textOverflow: "ellipsis" }}>
                   <strong style={{ color: "#00FFFF" }}>{incomingCall.callerName}</strong> is calling you...
                 </p>
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: "8px" }}>
+            <div style={{ display: "flex", gap: "8px", width: "100%" }}>
               <button
                 type="button"
                 onClick={() => onRespondCall(true)}
                 style={{
-                  flex: 1,
+                  flex: "1 1 0%",
+                  minWidth: 0,
+                  minHeight: "44px",
+                  boxSizing: "border-box",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -108,7 +114,10 @@ export function CallModals({
                 type="button"
                 onClick={() => onRespondCall(false)}
                 style={{
-                  flex: 1,
+                  flex: "1 1 0%",
+                  minWidth: 0,
+                  minHeight: "44px",
+                  boxSizing: "border-box",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -141,10 +150,12 @@ export function CallModals({
             transition={{ duration: 0.25 }}
             style={{
               position: "fixed",
-              bottom: "24px",
-              left: "24px",
-              zIndex: 9999,
-              width: "320px",
+              bottom: "max(16px, env(safe-area-inset-bottom))",
+              left: "clamp(12px, 3vw, 24px)",
+              zIndex: 11000,
+              width: "min(320px, calc(100vw - 24px))",
+              maxWidth: "calc(100vw - 24px)",
+              boxSizing: "border-box",
               backgroundColor: "var(--bg-card, rgba(13,13,13,0.96))",
               border: "2px solid var(--accent-o, #FF00FF)",
               boxShadow: "0 0 25px rgba(255, 0, 255, 0.4)",
@@ -172,22 +183,25 @@ export function CallModals({
                 <Users size={20} />
               </div>
 
-              <div>
-                <h4 style={{ margin: 0, fontSize: "14px", fontWeight: 700, color: "#fff" }}>
+              <div style={{ minWidth: 0, overflow: "hidden" }}>
+                <h4 style={{ margin: 0, fontSize: "14px", fontWeight: 700, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   Spectator Call Request
                 </h4>
-                <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "var(--text-muted, #9ca3af)" }}>
+                <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "var(--text-muted, #9ca3af)", overflow: "hidden", textOverflow: "ellipsis" }}>
                   <strong style={{ color: "#FF00FF" }}>{incomingJoinRequest.requesterName}</strong> wants to join the call
                 </p>
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: "8px" }}>
+            <div style={{ display: "flex", gap: "8px", width: "100%" }}>
               <button
                 type="button"
                 onClick={() => onRespondJoinRequest(incomingJoinRequest.requesterId, true)}
                 style={{
-                  flex: 1,
+                  flex: "1 1 0%",
+                  minWidth: 0,
+                  minHeight: "44px",
+                  boxSizing: "border-box",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -210,7 +224,10 @@ export function CallModals({
                 type="button"
                 onClick={() => onRespondJoinRequest(incomingJoinRequest.requesterId, false)}
                 style={{
-                  flex: 1,
+                  flex: "1 1 0%",
+                  minWidth: 0,
+                  minHeight: "44px",
+                  boxSizing: "border-box",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",

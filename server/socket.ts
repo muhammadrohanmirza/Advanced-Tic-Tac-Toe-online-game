@@ -96,6 +96,25 @@ function getRoomMember(room: ReturnType<typeof roomManager.resolveRoom>, socket:
   return { userId: uid, name, role: isPlayer ? ('player' as const) : ('spectator' as const) }
 }
 
+function getParticipantSocketId(room: ReturnType<typeof roomManager.resolveRoom>, targetUserId: string): string | undefined {
+  if (!room) return undefined
+  const call = room.call
+  const target = call?.participants.get(targetUserId)
+  let targetSocketId = target?.socketId
+  if (room.player1?.id === targetUserId && room.player1.socketId) targetSocketId = room.player1.socketId
+  if (room.player2?.id === targetUserId && room.player2.socketId) targetSocketId = room.player2.socketId
+  if (room.spectators) {
+    for (const spec of Array.from(room.spectators.values())) {
+      if (spec.id === targetUserId && spec.socketIds.size > 0) {
+        if (!targetSocketId || !spec.socketIds.has(targetSocketId)) {
+          targetSocketId = Array.from(spec.socketIds)[spec.socketIds.size - 1]
+        }
+      }
+    }
+  }
+  return targetSocketId
+}
+
 function emitDebouncedSpectatorCount(io: Server, roomId: string) {
   const room = roomManager.resolveRoom(roomId)
   if (!room) return
@@ -328,6 +347,11 @@ async function handleTurnTimeout(io: Server, roomId: string) {
 export function setupSocketEvents(io: Server) {
   console.log('[Socket] Setting up socket event handlers...')
 
+  const broadcastPublicRooms = () => {
+    const rooms = roomManager.getPublicRooms()
+    io.emit('public-rooms-list', { rooms })
+  }
+
   io.on('connection', (socket: Socket) => {
     console.log('✅ Client connected:', socket.id)
 
@@ -347,7 +371,8 @@ export function setupSocketEvents(io: Server) {
         symbol: 'X' as const
       }
 
-      const room = roomManager.createRoom(player, isPublic, turnDuration)
+      const safeTurnDuration = [15, 30, 45].includes(Number(turnDuration)) ? Number(turnDuration) : 0
+      const room = roomManager.createRoom(player, isPublic, safeTurnDuration)
       socket.join(room.id)
 
       console.log('Room created:', room.id, room.code)
@@ -375,6 +400,7 @@ export function setupSocketEvents(io: Server) {
         roomCode: room.code
       })
       socket.emit('call-state', roomManager.getCallState(room.id))
+      broadcastPublicRooms()
     })
 
     socket.on('join-room', (data) => {
@@ -448,6 +474,7 @@ export function setupSocketEvents(io: Server) {
       if (joinedRoom.turnDuration > 0 && joinedRoom.status === 'playing') {
         startRoomTurnTimer(io, joinedRoom.id)
       }
+      broadcastPublicRooms()
     })
 
     socket.on('spectate-room', (data) => {
@@ -902,7 +929,7 @@ export function setupSocketEvents(io: Server) {
         return
       }
 
-      if (currentRoom.player1?.id !== playerId && currentRoom.player2?.id !== playerId) {
+      if (playerId && currentRoom.player1?.id !== playerId && currentRoom.player2?.id !== playerId) {
         socket.emit('error', { message: 'Spectators cannot reject rematches' })
         return
       }
@@ -1301,10 +1328,7 @@ export function setupSocketEvents(io: Server) {
         return
       }
 
-      const target = call.participants.get(targetUserId)
-      let targetSocketId = target?.socketId
-      if (room.player1?.id === targetUserId && room.player1.socketId) targetSocketId = room.player1.socketId
-      if (room.player2?.id === targetUserId && room.player2.socketId) targetSocketId = room.player2.socketId
+      const targetSocketId = getParticipantSocketId(room, targetUserId)
 
       if (targetSocketId) {
         if (process.env.NODE_ENV !== 'production') {
@@ -1361,10 +1385,7 @@ export function setupSocketEvents(io: Server) {
         return
       }
 
-      const target = call.participants.get(targetUserId)
-      let targetSocketId = target?.socketId
-      if (room.player1?.id === targetUserId && room.player1.socketId) targetSocketId = room.player1.socketId
-      if (room.player2?.id === targetUserId && room.player2.socketId) targetSocketId = room.player2.socketId
+      const targetSocketId = getParticipantSocketId(room, targetUserId)
 
       if (targetSocketId) {
         if (process.env.NODE_ENV !== 'production') {
@@ -1421,10 +1442,7 @@ export function setupSocketEvents(io: Server) {
         return
       }
 
-      const target = call.participants.get(targetUserId)
-      let targetSocketId = target?.socketId
-      if (room.player1?.id === targetUserId && room.player1.socketId) targetSocketId = room.player1.socketId
-      if (room.player2?.id === targetUserId && room.player2.socketId) targetSocketId = room.player2.socketId
+      const targetSocketId = getParticipantSocketId(room, targetUserId)
 
       if (targetSocketId) {
         if (process.env.NODE_ENV !== 'production') {
@@ -1481,10 +1499,7 @@ export function setupSocketEvents(io: Server) {
         return
       }
 
-      const target = call.participants.get(targetUserId)
-      let targetSocketId = target?.socketId
-      if (room.player1?.id === targetUserId && room.player1.socketId) targetSocketId = room.player1.socketId
-      if (room.player2?.id === targetUserId && room.player2.socketId) targetSocketId = room.player2.socketId
+      const targetSocketId = getParticipantSocketId(room, targetUserId)
 
       if (targetSocketId) {
         if (process.env.NODE_ENV !== 'production') {
@@ -1684,6 +1699,7 @@ export function setupSocketEvents(io: Server) {
       socket.to(room.id).emit('opponent-left', {
         message: 'Opponent left the game'
       })
+      broadcastPublicRooms()
     })
 
     socket.on('disconnect', () => {
@@ -1717,6 +1733,7 @@ export function setupSocketEvents(io: Server) {
         }
       }
       roomManager.handleDisconnect(socket.id)
+      broadcastPublicRooms()
     })
   })
 

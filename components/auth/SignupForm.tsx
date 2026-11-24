@@ -6,7 +6,10 @@ import { useRouter } from "next/navigation";
 import { NeonButton } from "@/components/ui/NeonButton";
 import { NeonInput } from "@/components/ui/NeonInput";
 import { NeonCard } from "@/components/ui/NeonCard";
+import { CrownBadge } from "@/components/ui/CrownBadge";
 import Link from "next/link";
+import { User, Mail, Lock, AlertTriangle } from "lucide-react";
+import toast from "react-hot-toast";
 
 export function SignupForm() {
   const router = useRouter();
@@ -62,22 +65,28 @@ export function SignupForm() {
 
       router.push("/lobby");
       router.refresh();
-    } catch (err) {
+    } catch {
       setError("Something went wrong. Please try again.");
       setIsLoading(false);
     }
   };
 
   return (
-    <NeonCard variant="pink" className="w-full max-w-md mx-auto" glow>
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-neon-pink neon-text-pink mb-2">
+    <NeonCard variant="glass" className="w-full max-w-md mx-auto" glow>
+      <div style={{ textAlign: "center", marginBottom: "24px" }}>
+        <CrownBadge size={34} style={{ marginBottom: "6px" }} />
+        <h1
+          className="game-title-3d"
+          style={{ fontSize: "28px", margin: "0 0 6px" }}
+        >
           Create Account
         </h1>
-        <p className="text-gray-400">Join the Tic-Tac-Toe arena</p>
+        <p style={{ color: "var(--text-secondary, #c2d6ff)", fontSize: "14px", margin: 0 }}>
+          Join the Tic-Tac-Toe arena
+        </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
         <NeonInput
           label="Name"
           type="text"
@@ -85,7 +94,8 @@ export function SignupForm() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
-          variant="pink"
+          variant="cyan"
+          icon={<User className="w-5 h-5" />}
         />
 
         <NeonInput
@@ -95,7 +105,8 @@ export function SignupForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          variant="pink"
+          variant="cyan"
+          icon={<Mail className="w-5 h-5" />}
         />
 
         <NeonInput
@@ -105,7 +116,9 @@ export function SignupForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          variant="pink"
+          variant="cyan"
+          icon={<Lock className="w-5 h-5" />}
+          showPasswordToggle
         />
 
         <NeonInput
@@ -115,38 +128,63 @@ export function SignupForm() {
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           required
-          variant="pink"
+          variant="cyan"
+          icon={<Lock className="w-5 h-5" />}
+          showPasswordToggle
         />
 
         {error && (
-          <div className="p-3 bg-neon-red/10 border border-neon-red rounded-lg text-neon-red text-sm">
-            {error}
+          <div
+            style={{
+              padding: "12px 14px",
+              backgroundColor: "rgba(255, 59, 48, 0.15)",
+              border: "1px solid var(--accent-red, #FF3B30)",
+              borderRadius: "14px",
+              color: "var(--accent-red, #FF3B30)",
+              fontSize: "13px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <AlertTriangle size={16} />
+            <span>{error}</span>
           </div>
         )}
-     
+
         <NeonButton
           type="submit"
-          variant="pink"
-          className="w-full text-center"
-          glow={true}
-          style={{ borderRadius: "4px" }}
+          variant="primary"
+          size="lg"
+          fullWidth
           isLoading={isLoading}
+          style={{ marginTop: "8px", minHeight: "50px" }}
         >
           Create Account
         </NeonButton>
-      
       </form>
 
-      <div className="mt-6 text-center">
-        <p className="text-gray-400">
-          Already have an account?{" "}
-          <Link
-            href="/login"
-            className="text-neon-cyan hover:underline neon-text-cyan"
-          >
-            Sign In
-          </Link>
-        </p>
+      <div
+        style={{
+          marginTop: "24px",
+          textAlign: "center",
+          fontFamily: "var(--font-display)",
+          fontSize: "14px",
+          color: "var(--text-secondary, #c2d6ff)",
+        }}
+      >
+        Already have an account?{" "}
+        <Link
+          href="/login"
+          style={{
+            color: "var(--accent-x, #00A3FF)",
+            fontWeight: 700,
+            textDecoration: "none",
+            marginLeft: "4px",
+          }}
+        >
+          Sign In
+        </Link>
       </div>
     </NeonCard>
   );

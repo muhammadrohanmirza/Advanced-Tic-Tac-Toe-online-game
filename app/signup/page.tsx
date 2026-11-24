@@ -6,89 +6,15 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { NeonButton } from "@/components/ui/NeonButton";
 import { NeonInput } from "@/components/ui/NeonInput";
-import { NeonCard } from "@/components/ui/NeonCard";
-import Link from "next/link";
-import { User, Mail, Lock } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
-import * as Progress from "@radix-ui/react-progress";
-import { useWindowSize } from "@/hooks/useWindowSize";
+import { RoundIconButton } from "@/components/ui/RoundIconButton";
+import { CrownBadge } from "@/components/ui/CrownBadge";
 import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher";
+import { SoundControls } from "@/components/ui/SoundControls";
+import Link from "next/link";
+import { User, Mail, Lock, AlertTriangle, ArrowLeft } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function SignupPage() {
-  const { isMobile, isTablet, isDesktop } = useWindowSize();
-
-  return (
-    <div style={{
-      minHeight: "100vh",
-      display: "flex",
-      position: "relative",
-      overflow: "hidden",
-      backgroundColor: "var(--bg-primary, #050505)",
-    }}>
-      <Toaster position="top-right" />
-
-      {/* Floating Theme Switcher */}
-      <div style={{ position: "absolute", top: 16, right: 16, zIndex: 50 }}>
-        <ThemeSwitcher compact={isMobile} align="right" />
-      </div>
-
-      {/* Left Side - Animated (Hidden on mobile) */}
-      {!isMobile && (
-        <div style={{
-          width: isTablet ? "35%" : "50%",
-          position: "relative",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "var(--bg-card, rgba(13,13,13,0.5))",
-          display: isDesktop ? "flex" : isTablet ? "flex" : "none",
-        }}>
-          <div className="grid-bg" style={{ position: "absolute", inset: 0, opacity: 0.2 }} />
-          <motion.div
-            style={{ position: "relative", zIndex: 10, textAlign: "center", padding: "24px" }}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-          >
-            <h1 style={{
-              fontSize: isTablet ? "32px" : "48px",
-              fontWeight: "bold",
-              fontFamily: "monospace",
-              marginBottom: "16px",
-              lineHeight: 1.2,
-            }}>
-              <span className="neon-text-pink">CREATE</span>
-              <br />
-              <span className="neon-text-cyan">ACCOUNT</span>
-            </h1>
-            <p style={{
-              color: "var(--text-muted, #9ca3af)",
-              fontSize: isTablet ? "14px" : "18px",
-              padding: isTablet ? "0 16px" : "0",
-            }}>Join the arena and start playing</p>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Right Side - Form */}
-      <div style={{
-        width: isMobile ? "100%" : isTablet ? "65%" : "50%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: isMobile ? "20px 16px" : "24px",
-      }}>
-        <motion.div
-          style={{ width: "100%", maxWidth: "448px" }}
-          initial={{ x: 100, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-        >
-          <SignupForm isMobile={isMobile} />
-        </motion.div>
-      </div>
-    </div>
-  );
-}
-
-function SignupForm({ isMobile }: { isMobile: boolean }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -98,13 +24,13 @@ function SignupForm({ isMobile }: { isMobile: boolean }) {
   const [error, setError] = useState("");
 
   const getPasswordStrength = (pwd: string) => {
-    if (pwd.length < 3) return { level: 0, label: "Weak", color: "#FF3131" };
-    if (pwd.length < 6) return { level: 25, label: "Fair", color: "#FFD700" };
-    if (pwd.length < 9) return { level: 50, label: "Good", color: "#00BFFF" };
-    return { level: 100, label: "Strong", color: "#00FF41" };
+    if (pwd.length < 3) return { level: 10, label: "Weak", color: "#FF3B30" };
+    if (pwd.length < 6) return { level: 40, label: "Fair", color: "#FFB703" };
+    if (pwd.length < 9) return { level: 75, label: "Good", color: "#00A3FF" };
+    return { level: 100, label: "Strong", color: "#00E676" };
   };
 
-  const passwordStrength = getPasswordStrength(password);
+  const strength = getPasswordStrength(password);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,7 +44,7 @@ function SignupForm({ isMobile }: { isMobile: boolean }) {
 
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
-      toast.error("Password too short");
+      toast.error("Password must be at least 6 characters");
       return;
     }
 
@@ -152,7 +78,7 @@ function SignupForm({ isMobile }: { isMobile: boolean }) {
       } else {
         router.push("/login");
       }
-    } catch (err) {
+    } catch {
       setError("Something went wrong");
       toast.error("Something went wrong");
       setIsLoading(false);
@@ -160,133 +86,266 @@ function SignupForm({ isMobile }: { isMobile: boolean }) {
   };
 
   return (
-    <NeonCard variant="pink" glow>
-      <div style={{ textAlign: "center", marginBottom: isMobile ? "24px" : "32px" }}>
-        <h1 className="neon-text-pink" style={{
-          fontSize: isMobile ? "24px" : "28px",
-          fontWeight: "bold",
-          marginBottom: "8px",
-        }}>Create Account</h1>
-        <p style={{ color: "var(--text-muted, #9ca3af)", fontSize: isMobile ? "13px" : "14px" }}>
-          Join the Tic-Tac-Toe arena
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} style={{
+    <div
+      style={{
+        minHeight: "100dvh",
         display: "flex",
         flexDirection: "column",
-        gap: isMobile ? "12px" : "20px",
-      }}>
-        <NeonInput
-          label="Name"
-          type="text"
-          placeholder="Your name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          variant="pink"
-          icon={<User className="w-5 h-5" />}
-        />
+        padding: "clamp(12px, 3vw, 24px)",
+        paddingBottom: "max(24px, env(safe-area-inset-bottom))",
+        position: "relative",
+        zIndex: 1,
+        maxWidth: "1200px",
+        margin: "0 auto",
+        width: "100%",
+        boxSizing: "border-box",
+      }}
+    >
+      {/* Top Header */}
+      <header
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          width: "100%",
+        }}
+      >
+        <RoundIconButton
+          variant="blue"
+          size={44}
+          ariaLabel="Go to home"
+          onClick={() => router.push("/")}
+        >
+          <ArrowLeft style={{ width: "22px", height: "22px" }} />
+        </RoundIconButton>
 
-        <NeonInput
-          label="Email"
-          type="email"
-          placeholder="your@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          variant="pink"
-          icon={<Mail className="w-5 h-5" />}
-        />
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <SoundControls align="right" />
+          <ThemeSwitcher align="right" />
+        </div>
+      </header>
 
-        <NeonInput
-          label="Password"
-          type="password"
-          placeholder="••••••••"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          variant="pink"
-          icon={<Lock className="w-5 h-5" />}
-          showPasswordToggle
-        />
-
-        {password && (
-          <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? "6px" : "8px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: isMobile ? "11px" : "12px" }}>
-              <span style={{ color: "var(--text-muted, #9ca3af)" }}>Password Strength</span>
-              <span style={{ color: passwordStrength.color }}>{passwordStrength.label}</span>
-            </div>
-            <Progress.Root
-              style={{
-                position: "relative",
-                height: isMobile ? "6px" : "8px",
-                backgroundColor: "var(--border-color, #1a1a1a)",
-                borderRadius: "9999px",
-                overflow: "hidden",
-              }}
-              value={passwordStrength.level}
+      {/* Main Form Center */}
+      <main
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "flex-start",
+          flex: 1,
+          width: "100%",
+          padding: "clamp(12px, 2vh, 24px) 0",
+        }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="game-card-glass"
+          style={{
+            width: "100%",
+            maxWidth: "440px",
+            margin: "auto 0",
+            padding: "clamp(16px, 4vw, 32px)",
+            borderRadius: "clamp(22px, 5vw, 30px)",
+            boxShadow: "0 20px 48px rgba(0, 15, 50, 0.45)",
+          }}
+        >
+          {/* Header */}
+          <div style={{ textAlign: "center", marginBottom: "clamp(20px, 4vw, 28px)" }}>
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.1, type: "spring", stiffness: 350 }}
+              style={{ marginBottom: "4px" }}
             >
-              <motion.div
-                style={{
-                  height: "100%",
-                  backgroundColor: passwordStrength.color,
-                  boxShadow: `0 0 10px ${passwordStrength.color}`,
-                }}
-                initial={{ width: 0 }}
-                animate={{ width: `${passwordStrength.level}%` }}
-                transition={{ duration: 0.3 }}
+              <CrownBadge size={34} />
+            </motion.div>
+            <h1
+              className="game-title-3d"
+              style={{
+                fontSize: "clamp(26px, 5vw, 32px)",
+                margin: "0 0 6px",
+              }}
+            >
+              Create Account
+            </h1>
+            <p
+              style={{
+                color: "var(--text-secondary, #c2d6ff)",
+                fontSize: "14px",
+                margin: 0,
+                fontFamily: "var(--font-body)",
+              }}
+            >
+              Join the Tic Tac Toe arena
+            </p>
+          </div>
+
+          {/* Form */}
+          <form
+            onSubmit={handleSubmit}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "14px",
+            }}
+          >
+            <NeonInput
+              label="Player Name"
+              type="text"
+              placeholder="Your name or gamer tag"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              variant="cyan"
+              icon={<User className="w-5 h-5" />}
+              autoFocus
+            />
+
+            <NeonInput
+              label="Email"
+              type="email"
+              placeholder="your@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              variant="cyan"
+              icon={<Mail className="w-5 h-5" />}
+            />
+
+            <div>
+              <NeonInput
+                label="Password"
+                type="password"
+                placeholder="Min 6 characters"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                variant="cyan"
+                icon={<Lock className="w-5 h-5" />}
+                showPasswordToggle
               />
-            </Progress.Root>
+
+              {password && (
+                <div style={{ marginTop: "6px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontSize: "12px",
+                      marginBottom: "4px",
+                      fontFamily: "var(--font-body)",
+                    }}
+                  >
+                    <span style={{ color: "var(--text-muted, #8aa0d4)" }}>Strength</span>
+                    <span style={{ color: strength.color, fontWeight: 700 }}>{strength.label}</span>
+                  </div>
+                  <div
+                    style={{
+                      height: "5px",
+                      backgroundColor: "rgba(255, 255, 255, 0.1)",
+                      borderRadius: "9999px",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <motion.div
+                      style={{
+                        height: "100%",
+                        backgroundColor: strength.color,
+                        boxShadow: `0 0 8px ${strength.color}`,
+                      }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${strength.level}%` }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <NeonInput
+              label="Confirm Password"
+              type="password"
+              placeholder="Repeat your password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              variant="cyan"
+              icon={<Lock className="w-5 h-5" />}
+              showPasswordToggle
+            />
+
+            {error && (
+              <div
+                style={{
+                  padding: "12px 14px",
+                  backgroundColor: "rgba(255, 59, 48, 0.15)",
+                  border: "1px solid var(--accent-red, #FF3B30)",
+                  borderRadius: "14px",
+                  color: "var(--accent-red, #FF3B30)",
+                  fontSize: "13px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontFamily: "var(--font-body)",
+                }}
+              >
+                <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <NeonButton
+              type="submit"
+              variant="primary"
+              size="lg"
+              fullWidth
+              isLoading={isLoading}
+              style={{ marginTop: "8px", minHeight: "52px" }}
+            >
+              Create Account
+            </NeonButton>
+          </form>
+
+          {/* Footer Link */}
+          <div
+            style={{
+              marginTop: "24px",
+              textAlign: "center",
+              fontFamily: "var(--font-display)",
+              fontSize: "14px",
+              color: "var(--text-secondary, #c2d6ff)",
+            }}
+          >
+            Already have an account?{" "}
+            <Link
+              href="/login"
+              style={{
+                color: "var(--accent-x, #00A3FF)",
+                fontWeight: 700,
+                textDecoration: "none",
+                marginLeft: "4px",
+              }}
+            >
+              Sign In
+            </Link>
           </div>
-        )}
+        </motion.div>
+      </main>
 
-        <NeonInput
-          label="Confirm Password"
-          type="password"
-          placeholder="••••••••"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          required
-          variant="pink"
-          icon={<Lock className="w-5 h-5" />}
-        />
-
-        {error && (
-          <div style={{
-            padding: isMobile ? "12px" : "16px",
-            backgroundColor: "rgba(255,49,49,0.1)",
-            border: "1px solid #FF3131",
-            borderRadius: "12px",
-            color: "#FF3131",
-            fontSize: isMobile ? "13px" : "14px",
-          }}>
-            {error}
-          </div>
-        )}
-
-<NeonButton
-  type="submit"
-  variant="pink"
-  fullWidth
-  isLoading={isLoading}
-  size="lg"
->
-  Create Account
-</NeonButton>
-      </form>
-
-      <div style={{
-        marginTop: isMobile ? "24px" : "32px",
-        textAlign: "center",
-      }}>
-        <p style={{ color: "var(--text-muted, #9ca3af)", fontSize: isMobile ? "13px" : "14px" }}>
-          Already have an account?{" "}
-          <Link href="/login" className="neon-text-cyan" style={{ fontWeight: 600 }}>
-            Sign In
-          </Link>
-        </p>
-      </div>
-    </NeonCard>
+      {/* Footer */}
+      <footer
+        style={{
+          textAlign: "center",
+          fontSize: "12px",
+          color: "var(--text-muted, #8aa0d4)",
+          fontFamily: "var(--font-display)",
+          padding: "8px 0",
+        }}
+      >
+        © 2026 Tic Tac Toe Online • Think • Play • Win
+      </footer>
+    </div>
   );
 }

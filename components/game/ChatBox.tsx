@@ -30,7 +30,7 @@ interface ChatBoxProps {
   onToggleHideSpectatorReactions?: (hide: boolean) => void;
 }
 
-export function ChatBox({
+function ChatBoxComponent({
   messages,
   newMessage,
   onMessageChange,
@@ -109,17 +109,16 @@ export function ChatBox({
 
   return (
     <NeonCard
-      variant="default"
+      variant="glass"
+      className="chat-box-card"
       style={{
         width: "100%",
-        height: isMobile ? "370px" : "390px",
+        height: isMobile ? "370px" : "420px",
         display: "flex",
         flexDirection: "column",
-        backgroundColor: "var(--bg-card, rgba(13,13,13,0.92))",
-        border: "1px solid var(--border-color, rgba(0,255,255,0.18))",
-        boxShadow: "0 4px 24px rgba(0,0,0,0.3), 0 0 16px var(--border-color-glow, rgba(0,255,255,0.08))",
-        padding: "16px",
+        padding: isMobile ? "14px" : "16px",
         boxSizing: "border-box",
+        position: "relative",
       }}
     >
       {/* Header */}
@@ -129,42 +128,61 @@ export function ChatBox({
           alignItems: "center",
           justifyContent: "space-between",
           gap: "8px",
-          marginBottom: "10px",
+          marginBottom: "12px",
           paddingBottom: "10px",
-          borderBottom: "1px solid var(--border-color, rgba(255,255,255,0.08))",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
           flexShrink: 0,
+          minWidth: 0,
+          flexWrap: "wrap",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0, flexShrink: 1 }}>
           <div
             style={{
-              width: "30px",
-              height: "30px",
+              width: "32px",
+              height: "32px",
               borderRadius: "50%",
-              background: "rgba(0,255,255,0.14)",
+              background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+              boxShadow: "0 2px 8px rgba(37,99,235,0.4)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
             }}
           >
-            <MessageSquare style={{ width: "15px", height: "15px", color: "var(--accent-x, #00FFFF)" }} />
+            <MessageSquare style={{ width: "16px", height: "16px", color: "#ffffff" }} />
           </div>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <h3 style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary, #ffffff)", margin: 0 }}>
-              Live Chat
+          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+            <h3
+              style={{
+                fontSize: "15px",
+                fontWeight: "700",
+                color: "#ffffff",
+                fontFamily: "var(--font-display, inherit)",
+                margin: 0,
+                letterSpacing: "0.2px",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              Chat
             </h3>
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: "6px",
-                color: isPartnerTyping ? "#FFD700" : isSpectator ? "var(--accent-x, #00FFFF)" : isPartnerOnline ? "#00FF41" : "#FF3131",
+                color: isPartnerTyping ? "#FFD700" : isSpectator ? "#38bdf8" : isPartnerOnline ? "#22c55e" : "#ef4444",
                 fontSize: "11px",
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}
             >
-              <Circle style={{ width: "7px", height: "7px", fill: "currentColor", color: "currentColor" }} />
-              <span>
+              <Circle style={{ width: "7px", height: "7px", fill: "currentColor", color: "currentColor", flexShrink: 0 }} />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
                 {isPartnerTyping
                   ? `${partnerName} is typing...`
                   : isSpectator
@@ -178,25 +196,24 @@ export function ChatBox({
         </div>
 
         {/* Header Right: Hide Spectator Messages Toggle + Chat Log Toggle */}
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0, flexWrap: "wrap" }}>
           <motion.button
             type="button"
             onClick={handleToggleHideSpectator}
-            whileHover={{ scale: 1.1 }}
+            whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.92 }}
             style={{
-              background: hideSpectatorMessages ? "rgba(255, 49, 49, 0.15)" : "transparent",
+              background: hideSpectatorMessages ? "rgba(239, 68, 68, 0.2)" : "rgba(255,255,255,0.06)",
               border: `1px solid ${
-                hideSpectatorMessages ? "#FF3131" : "var(--border-color, rgba(255,255,255,0.12))"
+                hideSpectatorMessages ? "#ef4444" : "rgba(255,255,255,0.12)"
               }`,
-              borderRadius: "8px",
+              borderRadius: "10px",
               padding: "6px 8px",
-              color: hideSpectatorMessages ? "#FF3131" : "var(--text-muted, #6b7280)",
+              color: hideSpectatorMessages ? "#ef4444" : "var(--text-muted, #94a3b8)",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: hideSpectatorMessages ? "0 0 10px rgba(255, 49, 49, 0.25)" : "none",
               transition: "all 0.2s ease",
             }}
             title={
@@ -217,22 +234,21 @@ export function ChatBox({
             <motion.button
               type="button"
               onClick={() => onToggleHideSpectatorReactions(!hideSpectatorReactions)}
-              whileHover={{ scale: 1.1 }}
+              whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
               style={{
-                background: hideSpectatorReactions ? "rgba(255, 49, 49, 0.15)" : "transparent",
+                background: hideSpectatorReactions ? "rgba(239, 68, 68, 0.2)" : "rgba(255,255,255,0.06)",
                 border: `1px solid ${
-                  hideSpectatorReactions ? "#FF3131" : "var(--border-color, rgba(255,255,255,0.12))"
+                  hideSpectatorReactions ? "#ef4444" : "rgba(255,255,255,0.12)"
                 }`,
-                borderRadius: "8px",
+                borderRadius: "10px",
                 padding: "6px 8px",
-                color: hideSpectatorReactions ? "#FF3131" : "var(--text-muted, #6b7280)",
+                color: hideSpectatorReactions ? "#ef4444" : "var(--text-muted, #94a3b8)",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 position: "relative",
-                boxShadow: hideSpectatorReactions ? "0 0 10px rgba(255, 49, 49, 0.25)" : "none",
                 transition: "all 0.2s ease",
               }}
               title={
@@ -247,10 +263,10 @@ export function ChatBox({
                 <span
                   style={{
                     position: "absolute",
-                    top: "1px",
+                    top: "2px",
                     right: "3px",
                     fontSize: "8px",
-                    color: "#FF3131",
+                    color: "#ef4444",
                     fontWeight: 900,
                     lineHeight: 1,
                   }}
@@ -265,21 +281,20 @@ export function ChatBox({
             <motion.button
               type="button"
               onClick={() => onToggleShowReactionsInChat(!showReactionsInChat)}
-              whileHover={{ scale: 1.1 }}
+              whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
               style={{
-                background: showReactionsInChat ? "rgba(0, 255, 255, 0.15)" : "transparent",
+                background: showReactionsInChat ? "rgba(59, 130, 246, 0.2)" : "rgba(255,255,255,0.06)",
                 border: `1px solid ${
-                  showReactionsInChat ? "var(--accent-x, #00FFFF)" : "var(--border-color, rgba(255,255,255,0.12))"
+                  showReactionsInChat ? "#3b82f6" : "rgba(255,255,255,0.12)"
                 }`,
-                borderRadius: "8px",
+                borderRadius: "10px",
                 padding: "6px 8px",
-                color: showReactionsInChat ? "var(--accent-x, #00FFFF)" : "var(--text-muted, #6b7280)",
+                color: showReactionsInChat ? "#38bdf8" : "var(--text-muted, #94a3b8)",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: showReactionsInChat ? "0 0 10px rgba(0, 255, 255, 0.25)" : "none",
                 transition: "all 0.2s ease",
               }}
               title={
@@ -295,16 +310,17 @@ export function ChatBox({
         </div>
       </div>
 
-      {/* Messages List - strictly flexes to available height without card growth */}
+      {/* Messages List */}
       <div
         style={{
           flex: "1 1 0%",
           minHeight: 0,
           overflowY: "auto",
-          marginBottom: "8px",
+          marginBottom: "10px",
           paddingRight: "6px",
           display: "flex",
           flexDirection: "column",
+          gap: "8px",
         }}
       >
         {(() => {
@@ -319,8 +335,8 @@ export function ChatBox({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
               >
-                <MessageSquare style={{ width: "40px", height: "40px", color: "var(--text-muted, #4b5563)", margin: "0 auto 10px" }} />
-                <p style={{ color: "var(--text-muted, #9ca3af)", fontSize: "13px", margin: 0 }}>
+                <MessageSquare style={{ width: "36px", height: "36px", color: "rgba(255,255,255,0.2)", margin: "0 auto 8px" }} />
+                <p style={{ color: "var(--text-muted, #94a3b8)", fontSize: "13px", margin: 0 }}>
                   {hideSpectatorMessages && messages.length > 0
                     ? "Spectator messages are hidden."
                     : "No messages yet. Say hello!"}
@@ -342,25 +358,24 @@ export function ChatBox({
                       display: "flex",
                       flexDirection: "column",
                       maxWidth: "85%",
-                      marginBottom: "8px",
                       alignSelf: msg.isSystem ? "center" : isMine ? "flex-end" : "flex-start",
                       alignItems: msg.isSystem ? "center" : isMine ? "flex-end" : "flex-start",
                     }}
-                    initial={{ opacity: 0, y: 14, scale: 0.96 }}
+                    initial={{ opacity: 0, y: 10, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                    transition={{ type: "spring", stiffness: 280, damping: 24 }}
+                    exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
                   >
                     {msg.isSystem ? (
                       <span
                         style={{
                           fontSize: "11px",
-                          color: "var(--text-muted, #9ca3af)",
+                          color: "var(--text-muted, #94a3b8)",
                           fontStyle: "italic",
-                          padding: "3px 10px",
-                          backgroundColor: "var(--bg-card-hover, rgba(20,20,20,0.85))",
+                          padding: "3px 12px",
+                          backgroundColor: "rgba(255,255,255,0.06)",
                           borderRadius: "9999px",
-                          border: "1px solid var(--border-color, rgba(255,255,255,0.08))",
+                          border: "1px solid rgba(255,255,255,0.08)",
                           display: "inline-flex",
                           alignItems: "center",
                           gap: "4px",
@@ -372,45 +387,34 @@ export function ChatBox({
                     ) : (
                       <>
                         <motion.div
-                          initial={{ opacity: 0, x: isMine ? 10 : -10 }}
+                          initial={{ opacity: 0, x: isMine ? 8 : -8 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.2 }}
                           style={{
-                            padding: "8px 12px",
-                            borderRadius: "12px",
+                            padding: "9px 13px",
+                            borderRadius: "16px",
+                            borderBottomRightRadius: isMine ? "4px" : "16px",
+                            borderBottomLeftRadius: !isMine ? "4px" : "16px",
                             fontSize: "13px",
+                            lineHeight: "1.4",
                             fontWeight: 500,
-                            backgroundColor: isSpectatorMsg
-                              ? isMine
-                                ? "rgba(255, 255, 255, 0.08)"
-                                : "rgba(255, 255, 255, 0.04)"
-                              : isMine
-                              ? "rgba(0,255,255,0.16)"
-                              : "rgba(255,0,255,0.14)",
-                            color: isSpectatorMsg
-                              ? isMine
-                                ? "var(--text-primary, #ffffff)"
-                                : "var(--text-main, #d1d5db)"
-                              : isMine
-                              ? "var(--accent-x, #00FFFF)"
-                              : "var(--accent-o, #FF00FF)",
-                            border: isSpectatorMsg
-                              ? isMine
-                                ? "1px solid rgba(255, 255, 255, 0.22)"
-                                : "1px solid rgba(255, 255, 255, 0.1)"
-                              : isMine
-                              ? "1px solid rgba(0,255,255,0.25)"
-                              : "1px solid rgba(255,0,255,0.25)",
-                            boxShadow: isSpectatorMsg
-                              ? "0 2px 8px rgba(0,0,0,0.25)"
-                              : isMine
-                              ? "0 0 14px rgba(0,255,255,0.08)"
-                              : "0 0 14px rgba(255,0,255,0.08)",
+                            backgroundColor: isMine
+                              ? "#2563eb"
+                              : isSpectatorMsg
+                              ? "rgba(255, 255, 255, 0.08)"
+                              : "#1e293b",
+                            color: "#ffffff",
+                            border: isMine
+                              ? "1px solid rgba(255,255,255,0.15)"
+                              : "1px solid rgba(255, 255, 255, 0.1)",
+                            boxShadow: isMine
+                              ? "0 3px 12px rgba(37,99,235,0.35)"
+                              : "0 2px 8px rgba(0,0,0,0.25)",
                             wordBreak: "break-word",
                           }}
                         >
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "3px" }}>
-                            <span style={{ fontSize: "10px", opacity: 0.75, fontWeight: 600 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
+                            <span style={{ fontSize: "11px", opacity: isMine ? 0.85 : 0.75, fontWeight: 700 }}>
                               {isMine ? "You" : msg.senderName}
                             </span>
                             {isSpectatorMsg && (
@@ -420,13 +424,12 @@ export function ChatBox({
                                   fontWeight: 700,
                                   padding: "1px 5px",
                                   borderRadius: "4px",
-                                  backgroundColor: "rgba(255, 255, 255, 0.08)",
-                                  color: "var(--text-muted, #9ca3af)",
-                                  border: "1px solid rgba(255, 255, 255, 0.14)",
+                                  backgroundColor: "rgba(255, 255, 255, 0.12)",
+                                  color: "#94a3b8",
+                                  border: "1px solid rgba(255, 255, 255, 0.15)",
                                   display: "inline-flex",
                                   alignItems: "center",
                                   gap: "3px",
-                                  letterSpacing: "0.2px",
                                 }}
                               >
                                 👁 Spectator
@@ -435,7 +438,7 @@ export function ChatBox({
                           </div>
                           {msg.message}
                         </motion.div>
-                        <span style={{ fontSize: "10px", color: "var(--text-muted, #6b7280)", marginTop: "2px", paddingLeft: "6px" }}>
+                        <span style={{ fontSize: "10px", color: "var(--text-muted, #94a3b8)", marginTop: "2px", paddingLeft: "4px", paddingRight: "4px" }}>
                           {formatTime(msg.timestamp)}
                         </span>
                       </>
@@ -466,12 +469,12 @@ export function ChatBox({
               style={{
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "space-between",
-                gap: "5px",
-                padding: "4px 6px",
-                backgroundColor: "var(--bg-card-hover, rgba(255, 255, 255, 0.03))",
-                borderRadius: "12px",
-                border: "1px solid var(--border-color, rgba(255, 255, 255, 0.08))",
+                justifyContent: "flex-start",
+                gap: "6px",
+                padding: "6px 8px",
+                backgroundColor: "rgba(255, 255, 255, 0.05)",
+                borderRadius: "14px",
+                border: "1px solid rgba(255, 255, 255, 0.08)",
                 overflowX: "auto",
                 scrollbarWidth: "none",
                 WebkitOverflowScrolling: "touch",
@@ -486,32 +489,32 @@ export function ChatBox({
                     type="button"
                     onClick={() => handleReactionClick(emoji)}
                     disabled={disabled || isCoolingDown}
-                    whileHover={!disabled && !isCoolingDown ? { scale: 1.2 } : {}}
-                    whileTap={!disabled && !isCoolingDown ? { scale: 0.88 } : {}}
+                    whileHover={!disabled && !isCoolingDown ? { scale: 1.18, y: -2 } : {}}
+                    whileTap={!disabled && !isCoolingDown ? { scale: 0.9 } : {}}
                     style={{
-                      width: "32px",
-                      height: "32px",
+                      width: "34px",
+                      height: "34px",
                       borderRadius: "50%",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       background: isGG
-                        ? "rgba(255, 215, 0, 0.15)"
-                        : "var(--bg-card, rgba(0, 0, 0, 0.25))",
+                        ? "linear-gradient(135deg, #f59e0b, #d97706)"
+                        : "rgba(255, 255, 255, 0.08)",
                       border: isGG
-                        ? "1.5px solid #FFD700"
-                        : "1px solid var(--border-color, rgba(255, 255, 255, 0.1))",
+                        ? "2px solid #fef3c7"
+                        : "1px solid rgba(255, 255, 255, 0.12)",
                       cursor: disabled || isCoolingDown ? "not-allowed" : "pointer",
                       opacity: disabled || isCoolingDown ? 0.4 : 1,
-                      fontSize: isGG ? "11px" : "16px",
-                      fontWeight: isGG ? 800 : "normal",
-                      color: isGG ? "#FFD700" : undefined,
-                      fontFamily: isGG ? "monospace" : undefined,
-                      boxShadow: isGG ? "0 0 8px rgba(255, 215, 0, 0.3)" : "none",
+                      fontSize: isGG ? "11px" : "17px",
+                      fontWeight: isGG ? 900 : "normal",
+                      color: isGG ? "#ffffff" : undefined,
+                      fontFamily: isGG ? "var(--font-display, inherit)" : undefined,
+                      boxShadow: isGG ? "0 2px 8px rgba(245, 158, 11, 0.5)" : "0 2px 5px rgba(0,0,0,0.2)",
                       flexShrink: 0,
                       userSelect: "none",
                       padding: 0,
-                      transition: "border-color 0.15s, background-color 0.15s, opacity 0.15s",
+                      transition: "transform 0.15s, opacity 0.15s",
                     }}
                     title={isCoolingDown ? "Please wait..." : isGG ? "Good Game!" : emoji}
                     aria-label={`Reaction ${emoji}`}
@@ -533,6 +536,8 @@ export function ChatBox({
           gap: "8px",
           paddingTop: "2px",
           flexShrink: 0,
+          width: "100%",
+          boxSizing: "border-box",
         }}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -544,52 +549,74 @@ export function ChatBox({
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.92 }}
             style={{
-              width: "38px",
-              height: "38px",
-              borderRadius: "10px",
+              width: "44px",
+              height: "44px",
+              borderRadius: "50%",
               border: `1.5px solid ${
-                isReactionsOpen ? "var(--accent-x, #00FFFF)" : "var(--border-color, rgba(255, 255, 255, 0.15))"
+                isReactionsOpen ? "#3b82f6" : "rgba(255, 255, 255, 0.15)"
               }`,
               backgroundColor: isReactionsOpen
-                ? "rgba(0, 255, 255, 0.14)"
-                : "var(--bg-card, rgba(13,13,13,0.8))",
-              color: isReactionsOpen ? "var(--accent-x, #00FFFF)" : "var(--text-muted, #9ca3af)",
+                ? "rgba(59, 130, 246, 0.2)"
+                : "rgba(255, 255, 255, 0.06)",
+              color: isReactionsOpen ? "#38bdf8" : "var(--text-muted, #94a3b8)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
               flexShrink: 0,
-              boxShadow: isReactionsOpen ? "0 0 10px rgba(0, 255, 255, 0.25)" : "none",
+              boxShadow: isReactionsOpen ? "0 0 10px rgba(59, 130, 246, 0.3)" : "none",
               transition: "all 0.2s ease",
             }}
             title={isReactionsOpen ? "Hide reactions bar" : "Show reactions bar"}
             aria-label="Toggle reactions bar"
           >
-            <Smile style={{ width: "19px", height: "19px" }} />
+            <Smile style={{ width: "20px", height: "20px" }} />
           </motion.button>
         )}
 
-        <NeonInput
-          placeholder="Type a message..."
-          value={newMessage}
-          onChange={(e) => onMessageChange(e.target.value)}
-          onKeyPress={onKeyPress}
-          variant="cyan"
-          disabled={disabled}
-          maxLength={isSpectator ? 200 : undefined}
-          style={{ flex: 1 }}
-        />
+        <div style={{ flex: 1, position: "relative", minWidth: 0 }}>
+          <NeonInput
+            placeholder="Type a message..."
+            value={newMessage}
+            onChange={(e) => onMessageChange(e.target.value)}
+            onKeyPress={onKeyPress}
+            variant="cyan"
+            disabled={disabled}
+            maxLength={isSpectator ? 200 : undefined}
+            style={{ width: "100%", height: "44px", borderRadius: "22px" }}
+          />
+        </div>
 
-        <NeonButton
-          variant="cyan"
-          size="md"
+        <motion.button
+          type="button"
           onClick={onSendMessage}
           disabled={disabled || !newMessage.trim()}
-          style={{ padding: "10px 16px", minHeight: "40px", flexShrink: 0 }}
+          whileHover={!disabled && newMessage.trim() ? { scale: 1.08 } : {}}
+          whileTap={!disabled && newMessage.trim() ? { scale: 0.92 } : {}}
+          style={{
+            width: "44px",
+            height: "44px",
+            borderRadius: "50%",
+            background: disabled || !newMessage.trim()
+              ? "rgba(255,255,255,0.08)"
+              : "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+            border: "none",
+            color: "#ffffff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: disabled || !newMessage.trim() ? "not-allowed" : "pointer",
+            flexShrink: 0,
+            boxShadow: disabled || !newMessage.trim() ? "none" : "0 4px 12px rgba(37,99,235,0.4)",
+            transition: "all 0.2s ease",
+          }}
+          aria-label="Send message"
         >
-          <Send style={{ width: "18px", height: "18px" }} />
-        </NeonButton>
+          <Send style={{ width: "18px", height: "18px", transform: "translateX(1px)" }} />
+        </motion.button>
       </motion.div>
     </NeonCard>
   );
 }
+
+export const ChatBox = React.memo(ChatBoxComponent);

@@ -22,11 +22,11 @@ export function PlayerInfo({ player, symbol, isCurrentTurn, isYou = false }: Pla
         alignItems: "center",
         gap: "16px",
         padding: "16px",
-        borderRadius: "12px",
-        border: `2px solid ${isCurrentTurn ? color : "#1a1a1a"}`,
-        backgroundColor: "rgba(13,13,13,0.8)",
-        backdropFilter: "blur(10px)",
-        boxShadow: isCurrentTurn ? `0 0 20px ${color}33` : "none",
+        borderRadius: "18px",
+        border: `2px solid ${isCurrentTurn ? color : "rgba(255,255,255,0.12)"}`,
+        backgroundColor: "rgba(15, 23, 42, 0.85)",
+        backdropFilter: "blur(12px)",
+        boxShadow: isCurrentTurn ? `0 0 20px ${color}44` : "0 4px 16px rgba(0,0,0,0.25)",
         animation: isCurrentTurn ? "borderPulse 1.5s ease-in-out infinite" : "none",
       }}
       initial={{ opacity: 0, x: isYou ? -30 : 30 }}

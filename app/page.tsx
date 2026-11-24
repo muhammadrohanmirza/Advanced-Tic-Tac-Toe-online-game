@@ -1,490 +1,415 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import Particles, { initParticlesEngine } from '@tsparticles/react';
-import { loadSlim } from '@tsparticles/slim';
-import { useWindowSize } from '@/hooks/useWindowSize';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { useSession } from "next-auth/react";
+import { Play, Bot, Trophy, Settings, Users, LogIn, UserPlus, History } from "lucide-react";
+import { NeonButton } from "@/components/ui/NeonButton";
+import { RoundIconButton } from "@/components/ui/RoundIconButton";
+import { CrownBadge } from "@/components/ui/CrownBadge";
+import { Home3DIllustration } from "@/components/game/Home3DIllustration";
+import { SettingsModal } from "@/components/ui/SettingsModal";
+import { SoundControls } from "@/components/ui/SoundControls";
+import { Leaderboard } from "@/components/leaderboard/Leaderboard";
+import { LeaderboardEntry } from "@/types/game";
+import { useWindowSize } from "@/hooks/useWindowSize";
 
 export default function HomePage() {
   const router = useRouter();
-  const { isMobile, isTablet, isDesktop } = useWindowSize();
-  const [isLoaded, setIsLoaded] = useState(false);
+  const { data: session } = useSession();
+  const { isMobile, isTiny } = useWindowSize();
+  const [showSettings, setShowSettings] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+  const [isLoadingScores, setIsLoadingScores] = useState(false);
 
+  // Fetch leaderboard when modal opened
   useEffect(() => {
-    initParticlesEngine(async (engine) => {
-      await loadSlim(engine);
-    }).then(() => {
-      setIsLoaded(true);
-    });
-  }, []);
+    if (!showLeaderboard) return;
+    setIsLoadingScores(true);
+    fetch("/api/scores?game=tictactoe")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.leaderboard)) {
+          setLeaderboardData(data.leaderboard);
+        }
+      })
+      .catch((err) => console.error("Failed to load scores:", err))
+      .finally(() => setIsLoadingScores(false));
+  }, [showLeaderboard]);
 
-  const particlesOptions = {
-    background: { color: { value: '#050505' } },
-    particles: {
-      number: { value: isMobile ? 30 : 60 },
-      color: { value: ['#00FFFF', '#FF00FF', '#00FF41'] },
-      opacity: { value: 0.4 },
-      size: { value: { min: 1, max: 3 } },
-      move: { enable: true, speed: 0.8, direction: 'none' as const, outModes: 'out' as const },
-      links: {
-        enable: true,
-        color: '#00FFFF',
-        opacity: 0.15,
-        distance: 150,
-      },
-    },
-    interactivity: {
-      events: {
-        onHover: { enable: !isMobile, mode: 'grab' as const },
-      },
-      modes: {
-        grab: { distance: 140, links: { opacity: 0.3 } },
-      },
-    },
-    detectRetina: true,
+  const handlePlayOnline = () => {
+    if (session) {
+      router.push("/lobby");
+    } else {
+      router.push("/login");
+    }
+  };
+
+  const handlePlayAI = () => {
+    router.push("/play-ai");
   };
 
   return (
-    <div style={{
-      backgroundColor: '#050505',
-      minHeight: '100vh',
-      width: '100%',
-      position: 'relative',
-      overflow: 'hidden',
-    }}>
-
-      {/* Particles Background */}
-      {isLoaded && !isMobile && (
-        <div style={{
-          position: 'absolute',
-          top: 0, left: 0,
-          width: '100%', height: '100%',
-          zIndex: 0,
-        }}>
-          <Particles options={particlesOptions as any} />
-        </div>
-      )}
-
-      {/* Grid Background */}
-      <div className="grid-bg" style={{
-        position: 'absolute',
-        top: 0, left: 0,
-        width: '100%', height: '100%',
-        zIndex: 0,
-        opacity: 0.2,
-      }} />
-
-      {/* NAVBAR - Responsive */}
-      <nav style={{
-        position: 'relative',
-        zIndex: 10,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: isMobile ? '12px 16px' : '20px 40px',
-        borderBottom: '1px solid #1a1a1a',
-        gap: '12px',
-      }}>
-        {/* Logo - Responsive */}
-        <motion.div
-          initial={{ opacity: 0, x: -30 }}
-          animate={{ opacity: 1, x: 0 }}
-          style={{
-            fontFamily: 'Courier New, monospace',
-            fontSize: isMobile ? '16px' : isTablet ? '18px' : '22px',
-            fontWeight: 'bold',
-            letterSpacing: isMobile ? '2px' : '4px',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          <span style={{ color: '#00FFFF', textShadow: '0 0 10px #00FFFF' }}>TIC</span>
-          <span style={{ color: '#ffffff', opacity: 0.5 }}>-</span>
-          <span style={{ color: '#FF00FF', textShadow: '0 0 10px #FF00FF' }}>TAC</span>
-          <span style={{ color: '#ffffff', opacity: 0.5 }}>-</span>
-          <span style={{ color: '#00FF41', textShadow: '0 0 10px #00FF41' }}>TOE</span>
-        </motion.div>
-
-        {/* Nav Buttons - Responsive */}
-        <motion.div
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          style={{
-            display: 'flex',
-            gap: isMobile ? '8px' : '12px',
-            flexShrink: 0,
-          }}
-        >
-          <button
-            onClick={() => router.push('/login')}
-            style={{
-              background: 'transparent',
-              border: '1px solid #00FFFF',
-              color: '#00FFFF',
-              padding: isMobile ? '6px 14px' : '8px 24px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: '600',
-              letterSpacing: '1px',
-              fontSize: isMobile ? '12px' : '14px',
-              textShadow: '0 0 8px #00FFFF',
-              boxShadow: '0 0 10px #00FFFF33',
-              transition: 'all 0.3s',
-              whiteSpace: 'nowrap',
-              minHeight: '44px',
-            }}
-          >Login</button>
-          <button
-            onClick={() => router.push('/signup')}
-            style={{
-              background: 'transparent',
-              border: '1px solid #FF00FF',
-              color: '#FF00FF',
-              padding: isMobile ? '6px 14px' : '8px 24px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: '600',
-              letterSpacing: '1px',
-              fontSize: isMobile ? '12px' : '14px',
-              textShadow: '0 0 8px #FF00FF',
-              boxShadow: '0 0 10px #FF00FF33',
-              transition: 'all 0.3s',
-              whiteSpace: 'nowrap',
-              minHeight: '44px',
-            }}
-          >Sign Up</button>
-        </motion.div>
-      </nav>
-
-      {/* HERO SECTION - Responsive */}
-      <section style={{
-        position: 'relative',
-        zIndex: 10,
-        minHeight: isMobile ? '75vh' : '85vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        textAlign: 'center',
-        padding: isMobile ? '40px 16px' : '40px 20px',
-      }}>
-        {/* Main Title - Responsive with clamp */}
-        <motion.div
-          initial={{ opacity: 0, y: -40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          style={{
-            fontFamily: 'Courier New, monospace',
-            fontSize: isMobile ? 'clamp(36px, 10vw, 48px)' : isTablet ? 'clamp(48px, 8vw, 64px)' : 'clamp(64px, 8vw, 90px)',
-            fontWeight: 'bold',
-            letterSpacing: isMobile ? '3px' : '6px',
-            marginBottom: '16px',
-            lineHeight: 1.1,
-            wordBreak: 'break-word',
-          }}
-        >
-          <span style={{ color: '#00FFFF', textShadow: isMobile ? '0 0 10px #00FFFF' : '0 0 20px #00FFFF, 0 0 40px #00FFFF55' }}>TIC</span>
-          <span style={{ color: '#ffffff55' }}>-</span>
-          <span style={{ color: '#FF00FF', textShadow: isMobile ? '0 0 10px #FF00FF' : '0 0 20px #FF00FF, 0 0 40px #FF00FF55' }}>TAC</span>
-          <span style={{ color: '#ffffff55' }}>-</span>
-          <span style={{ color: '#00FF41', textShadow: isMobile ? '0 0 10px #00FF41' : '0 0 20px #00FF41, 0 0 40px #00FF4155' }}>TOE</span>
-        </motion.div>
-
-        {/* Subtitle - Responsive */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4, duration: 0.8 }}
-          style={{
-            color: '#00FF41',
-            fontSize: isMobile ? '12px' : '14px',
-            letterSpacing: isMobile ? '2px' : '4px',
-            marginBottom: '16px',
-            textShadow: '0 0 10px #00FF41',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          REAL-TIME ONLINE MULTIPLAYER
-        </motion.p>
-
-        {/* Description - Responsive */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.8 }}
-          style={{
-            color: '#888',
-            fontSize: isMobile ? '14px' : '16px',
-            maxWidth: isMobile ? '100%' : '500px',
-            lineHeight: 1.6,
-            marginBottom: isMobile ? '32px' : '40px',
-            padding: isMobile ? '0 8px' : '0',
-          }}
-        >
-          Challenge friends or play against random opponents
-          in this classic game reimagined with a neon interface.
-        </motion.p>
-
-        {/* BUTTONS - Responsive: Stack on mobile, row on desktop */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8, duration: 0.6 }}
-          style={{
-            display: 'flex',
-            flexDirection: isMobile ? 'column' : 'row',
-            gap: isMobile ? '12px' : '16px',
-            justifyContent: 'center',
-            alignItems: 'center',
-            width: isMobile ? '100%' : 'auto',
-          }}
-        >
-          <motion.button
-            whileHover={{ scale: isMobile ? 1 : 1.05, y: isMobile ? 0 : -3 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => router.push('/signup')}
-            style={{
-              background: 'transparent',
-              border: '2px solid #00FFFF',
-              color: '#00FFFF',
-              padding: isMobile ? '14px 32px' : '14px 40px',
-              borderRadius: '8px',
-              fontSize: isMobile ? '14px' : '16px',
-              fontWeight: '700',
-              letterSpacing: '2px',
-              cursor: 'pointer',
-              textShadow: '0 0 10px #00FFFF',
-              boxShadow: '0 0 15px #00FFFF33',
-              transition: 'all 0.3s',
-              whiteSpace: 'nowrap',
-              width: isMobile ? '100%' : 'auto',
-              maxWidth: isMobile ? '300px' : 'none',
-              minHeight: isMobile ? '48px' : 'auto',
-            }}
-          >
-            ⚡ PLAY NOW — FREE
-          </motion.button>
-
-          <motion.button
-            whileHover={{ scale: isMobile ? 1 : 1.05, y: isMobile ? 0 : -3 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => router.push('/login')}
-            style={{
-              background: 'transparent',
-              border: '2px solid #FF00FF',
-              color: '#FF00FF',
-              padding: isMobile ? '14px 32px' : '14px 40px',
-              borderRadius: '8px',
-              fontSize: isMobile ? '14px' : '16px',
-              fontWeight: '700',
-              letterSpacing: '2px',
-              cursor: 'pointer',
-              textShadow: '0 0 10px #FF00FF',
-              boxShadow: '0 0 15px #FF00FF33',
-              transition: 'all 0.3s',
-              whiteSpace: 'nowrap',
-              width: isMobile ? '100%' : 'auto',
-              maxWidth: isMobile ? '300px' : 'none',
-              minHeight: isMobile ? '48px' : 'auto',
-            }}
-          >
-            SIGN IN
-          </motion.button>
-        </motion.div>
-      </section>
-
-      {/* FEATURES SECTION - Responsive */}
-      <section style={{
-        position: 'relative',
-        zIndex: 10,
-        padding: isMobile ? '40px 16px' : '60px 40px',
-        maxWidth: '1100px',
-        margin: '0 auto',
-      }}>
-        <h2 style={{
-          textAlign: 'center',
-          color: '#ffffff',
-          fontSize: isMobile ? '20px' : '28px',
-          letterSpacing: isMobile ? '2px' : '4px',
-          marginBottom: isMobile ? '32px' : '40px',
-          fontFamily: 'Courier New, monospace',
-        }}>
-          WHY PLAY?
-        </h2>
-
-        {/* 3 Feature Cards - Responsive Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
-          gap: isMobile ? '20px' : '24px',
-        }}>
-
-          {/* Card 1 */}
-          <motion.div
-            whileHover={{ scale: isMobile ? 1 : 1.03, y: isMobile ? 0 : -5 }}
-            style={{
-              background: '#0d0d0d',
-              border: '1px solid #00FFFF44',
-              borderRadius: '16px',
-              padding: isMobile ? '24px 20px' : '32px 24px',
-              textAlign: 'center',
-              boxShadow: '0 0 20px #00FFFF11',
-            }}
-          >
-            <div style={{ fontSize: isMobile ? '32px' : '40px', marginBottom: '16px' }}>⚡</div>
-            <h3 style={{
-              color: '#00FFFF',
-              fontSize: isMobile ? '16px' : '18px',
-              letterSpacing: '2px',
-              marginBottom: '12px',
-              textShadow: '0 0 8px #00FFFF',
-            }}>REAL-TIME PLAY</h3>
-            <p style={{ color: '#888', lineHeight: 1.6, fontSize: isMobile ? '13px' : '14px' }}>
-              Instant moves via WebSocket technology.
-              Zero delay gameplay.
-            </p>
-          </motion.div>
-
-          {/* Card 2 */}
-          <motion.div
-            whileHover={{ scale: isMobile ? 1 : 1.03, y: isMobile ? 0 : -5 }}
-            style={{
-              background: '#0d0d0d',
-              border: '1px solid #FF00FF44',
-              borderRadius: '16px',
-              padding: isMobile ? '24px 20px' : '32px 24px',
-              textAlign: 'center',
-              boxShadow: '0 0 20px #FF00FF11',
-            }}
-          >
-            <div style={{ fontSize: isMobile ? '32px' : '40px', marginBottom: '16px' }}>🎮</div>
-            <h3 style={{
-              color: '#FF00FF',
-              fontSize: isMobile ? '16px' : '18px',
-              letterSpacing: '2px',
-              marginBottom: '12px',
-              textShadow: '0 0 8px #FF00FF',
-            }}>PLAY WITH FRIENDS</h3>
-            <p style={{ color: '#888', lineHeight: 1.6, fontSize: isMobile ? '13px' : '14px' }}>
-              Create private rooms and share
-              4-letter codes with anyone.
-            </p>
-          </motion.div>
-
-          {/* Card 3 */}
-          <motion.div
-            whileHover={{ scale: isMobile ? 1 : 1.03, y: isMobile ? 0 : -5 }}
-            style={{
-              background: '#0d0d0d',
-              border: '1px solid #FFD70044',
-              borderRadius: '16px',
-              padding: isMobile ? '24px 20px' : '32px 24px',
-              textAlign: 'center',
-              boxShadow: '0 0 20px #FFD70011',
-              gridRow: isTablet ? '1' : 'auto',
-            }}
-          >
-            <div style={{ fontSize: isMobile ? '32px' : '40px', marginBottom: '16px' }}>🏆</div>
-            <h3 style={{
-              color: '#FFD700',
-              fontSize: isMobile ? '16px' : '18px',
-              letterSpacing: '2px',
-              marginBottom: '12px',
-              textShadow: '0 0 8px #FFD700',
-            }}>LEADERBOARDS</h3>
-            <p style={{ color: '#888', lineHeight: 1.6, fontSize: isMobile ? '13px' : '14px' }}>
-              Track your wins and
-              climb the global rankings.
-            </p>
-          </motion.div>
-
-        </div>
-      </section>
-
-      {/* HOW TO PLAY - Responsive */}
-      <section style={{
-        position: 'relative',
-        zIndex: 10,
-        padding: isMobile ? '40px 16px' : '60px 40px',
-        maxWidth: '800px',
-        margin: '0 auto',
-        textAlign: 'center',
-      }}>
-        <h2 style={{
-          color: '#ffffff',
-          fontSize: isMobile ? '20px' : '28px',
-          letterSpacing: isMobile ? '2px' : '4px',
-          marginBottom: isMobile ? '32px' : '40px',
-          fontFamily: 'Courier New, monospace',
-        }}>
-          HOW TO PLAY
-        </h2>
-
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: isMobile ? '24px' : '40px',
-          flexDirection: isMobile ? 'column' : 'row',
-          alignItems: 'center',
-          maxWidth: isMobile ? '300px' : 'none',
-          margin: '0 auto',
-        }}>
-          {[
-            { num: '1', text: 'Sign up free', color: '#00FFFF' },
-            { num: '2', text: 'Create or join a room', color: '#FF00FF' },
-            { num: '3', text: 'Get 3 in a row to win!', color: '#00FF41' },
-          ].map((step) => (
-            <div key={step.num} style={{
-              display: 'flex',
-              flexDirection: isMobile ? 'row' : 'column',
-              alignItems: 'center',
-              gap: isMobile ? '16px' : '0',
-              textAlign: 'center',
-              width: isMobile ? '100%' : 'auto',
-            }}>
-              <div style={{
-                width: isMobile ? '48px' : '60px',
-                height: isMobile ? '48px' : '60px',
-                borderRadius: '50%',
-                border: `2px solid ${step.color}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: isMobile ? '18px' : '24px',
-                fontWeight: 'bold',
-                color: step.color,
-                boxShadow: `0 0 15px ${step.color}55`,
-                textShadow: `0 0 10px ${step.color}`,
-                flexShrink: 0,
-              }}>{step.num}</div>
-              <p style={{
-                color: '#ccc',
-                fontSize: isMobile ? '14px' : '14px',
-                margin: 0,
-                whiteSpace: 'nowrap',
-              }}>{step.text}</p>
+    <div
+      style={{
+        minHeight: "100dvh",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        padding: "clamp(12px, 3vw, 24px)",
+        paddingBottom: "max(24px, env(safe-area-inset-bottom))",
+        position: "relative",
+        zIndex: 1,
+        maxWidth: "1280px",
+        margin: "0 auto",
+        width: "100%",
+        boxSizing: "border-box",
+      }}
+    >
+      {/* Top Header Bar */}
+      <header
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          width: "100%",
+          padding: "4px 0 clamp(8px, 2vw, 16px)",
+          flexWrap: "wrap",
+          gap: "8px",
+          minWidth: 0,
+        }}
+      >
+        {/* Brand / Status Pill or Auth Buttons */}
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0, flexShrink: 1 }}>
+          {session ? (
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "6px 12px",
+                borderRadius: "9999px",
+                backgroundColor: "var(--bg-card, rgba(14, 25, 66, 0.7))",
+                border: "1px solid var(--border-color, rgba(65, 115, 235, 0.3))",
+                fontFamily: "var(--font-display)",
+                fontSize: "13px",
+                color: "var(--text-secondary, #c2d6ff)",
+                maxWidth: isTiny ? "130px" : "180px",
+                minWidth: 0,
+              }}
+            >
+              <span
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  backgroundColor: "var(--accent-green, #00E676)",
+                  boxShadow: "0 0 8px #00E676",
+                  flexShrink: 0,
+                }}
+              />
+              <span
+                style={{
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {session.user?.name || "Player"}
+              </span>
             </div>
-          ))}
+          ) : (
+            <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+              <NeonButton
+                variant="dark"
+                size="sm"
+                onClick={() => router.push("/login")}
+                style={{
+                  padding: isTiny ? "8px 10px" : "8px 14px",
+                  minHeight: "44px",
+                }}
+                aria-label="Login"
+              >
+                <LogIn style={{ width: "16px", height: "16px" }} />
+                {!isTiny && <span>Login</span>}
+              </NeonButton>
+              <NeonButton
+                variant="blue"
+                size="sm"
+                onClick={() => router.push("/signup")}
+                style={{
+                  padding: isTiny ? "8px 10px" : "8px 14px",
+                  minHeight: "44px",
+                }}
+                aria-label="Sign Up"
+              >
+                <UserPlus style={{ width: "16px", height: "16px" }} />
+                {!isTiny && <span>Sign Up</span>}
+              </NeonButton>
+            </div>
+          )}
         </div>
-      </section>
 
-      {/* FOOTER - Responsive */}
-      <footer style={{
-        position: 'relative',
-        zIndex: 10,
-        textAlign: 'center',
-        padding: isMobile ? '24px 16px' : '30px',
-        borderTop: '1px solid #1a1a1a',
-        color: '#444',
-        fontSize: isMobile ? '11px' : '13px',
-        letterSpacing: isMobile ? '1px' : '2px',
-        lineHeight: 1.5,
-      }}>
-        © 2026 Muhammad Rohan Mirza. All rights reserved.
-        {/* Built with Next.js 14 · Socket.IO · NeonDB · TypeScript */}
+        {/* Top Right Controls */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+          <SoundControls align="right" compact={isMobile} />
+          <RoundIconButton
+            variant="dark"
+            size={44}
+            ariaLabel="Open settings"
+            onClick={() => setShowSettings(true)}
+          >
+            <Settings style={{ width: "20px", height: "20px" }} />
+          </RoundIconButton>
+        </div>
+      </header>
+
+      {/* Main Hero Content Area (Responsive Grid: 1 column on mobile/tablet, 2 columns on desktop) */}
+      <main
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "flex-start",
+          flex: 1,
+          padding: "clamp(8px, 2vh, 24px) 0",
+          width: "100%",
+        }}
+      >
+        <div
+          className="home-hero-layout"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))",
+            gap: "clamp(20px, 4vw, 48px)",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "100%",
+            maxWidth: "960px",
+            margin: "auto 0",
+          }}
+        >
+          {/* Column 1: Title & 3D Illustration */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              textAlign: "center",
+            }}
+          >
+            {/* Crown above Title */}
+            <motion.div
+              initial={{ scale: 0, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              transition={{ delay: 0.1, type: "spring", stiffness: 350 }}
+              style={{ marginBottom: "2px" }}
+            >
+              <CrownBadge size={38} />
+            </motion.div>
+
+            {/* Title with cartoon-3D shadow */}
+            <h1
+              className="game-title-3d"
+              style={{
+                fontSize: "clamp(42px, 8vw, 68px)",
+                lineHeight: 1.05,
+                margin: "0 0 6px",
+              }}
+            >
+              Tic Tac Toe
+            </h1>
+
+            {/* Tagline */}
+            <p
+              className="game-tagline"
+              style={{
+                margin: "0 0 clamp(16px, 3vh, 28px)",
+              }}
+            >
+              Think • Play • Win
+            </p>
+
+            {/* 3D X/O Tiles with orbital glows */}
+            <Home3DIllustration size={260} />
+          </div>
+
+          {/* Column 2: Button Actions Stack */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "clamp(12px, 2.5vw, 16px)",
+              width: "100%",
+              maxWidth: "380px",
+              margin: "0 auto",
+            }}
+          >
+            {/* Primary Action: Play Online (Yellow Pill) */}
+            <NeonButton
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={handlePlayOnline}
+              style={{ minHeight: "56px" }}
+            >
+              <Play style={{ width: "22px", height: "22px", fill: "currentColor" }} />
+              <span style={{ fontSize: "18px" }}>Play Online</span>
+              <Users style={{ width: "20px", height: "20px", opacity: 0.85 }} />
+            </NeonButton>
+
+            {/* Secondary Action: Play vs AI (Purple Pill) */}
+            <NeonButton
+              variant="purple"
+              size="lg"
+              fullWidth
+              onClick={handlePlayAI}
+              style={{ minHeight: "56px" }}
+            >
+              <Bot style={{ width: "22px", height: "22px" }} />
+              <span style={{ fontSize: "18px" }}>Play vs AI</span>
+            </NeonButton>
+
+            {/* Row of Secondary Dark Blue Pill Buttons: Leaderboard, History (if logged in), Settings */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: session?.user
+                  ? (isTiny ? "1fr 1fr" : "repeat(3, 1fr)")
+                  : "1fr 1fr",
+                gap: "8px",
+                width: "100%",
+              }}
+            >
+              <NeonButton
+                variant="dark-blue"
+                size="sm"
+                style={{
+                  padding: "8px 10px",
+                  fontSize: "13px",
+                  minHeight: "44px",
+                }}
+                onClick={() => setShowLeaderboard(true)}
+              >
+                <Trophy style={{ width: "16px", height: "16px", color: "#FFD700", flexShrink: 0 }} />
+                <span>Rankings</span>
+              </NeonButton>
+
+              {session?.user && (
+                <NeonButton
+                  variant="dark-blue"
+                  size="sm"
+                  style={{
+                    padding: "8px 10px",
+                    fontSize: "13px",
+                    minHeight: "44px",
+                  }}
+                  onClick={() => router.push("/history")}
+                >
+                  <History style={{ width: "16px", height: "16px", color: "var(--accent-x, #00A3FF)", flexShrink: 0 }} />
+                  <span>History</span>
+                </NeonButton>
+              )}
+
+              <NeonButton
+                variant="dark-blue"
+                size="sm"
+                style={{
+                  padding: "8px 10px",
+                  fontSize: "13px",
+                  minHeight: "44px",
+                  ...(session?.user && isTiny ? { gridColumn: "span 2" } : {}),
+                }}
+                onClick={() => setShowSettings(true)}
+              >
+                <Settings style={{ width: "16px", height: "16px", color: "var(--accent-x, #00A3FF)", flexShrink: 0 }} />
+                <span>Settings</span>
+              </NeonButton>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer Bar */}
+      <footer
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "clamp(8px, 1.5vw, 14px) 0",
+          fontSize: "13px",
+          color: "var(--text-muted, #8aa0d4)",
+          fontFamily: "var(--font-display)",
+        }}
+      >
+        <span>© 2026 Tic Tac Toe Online</span>
+        <span
+          style={{
+            fontWeight: 700,
+            color: "var(--accent-x, #00A3FF)",
+            letterSpacing: "0.5px",
+          }}
+        >
+          Let&apos;s Play!
+        </span>
       </footer>
 
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
+
+      {/* Leaderboard Modal */}
+      {showLeaderboard && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "16px",
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowLeaderboard(false)}
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundColor: "rgba(5, 12, 35, 0.7)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+            }}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: 16 }}
+            style={{
+              position: "relative",
+              zIndex: 10,
+              width: "100%",
+              maxWidth: "500px",
+              maxHeight: "calc(100dvh - 32px)",
+              overflowY: "auto",
+              scrollbarWidth: "thin",
+            }}
+          >
+            <Leaderboard
+              leaderboard={leaderboardData}
+              isLoading={isLoadingScores}
+              onBack={() => setShowLeaderboard(false)}
+            />
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

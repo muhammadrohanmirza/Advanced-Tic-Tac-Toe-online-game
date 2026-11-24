@@ -172,7 +172,7 @@ class RoomManager {
   }
 
   createRoom(player: Player, isPublic: boolean, turnDuration: number = 0): Room {
-    const safeTurnDuration = [15, 30].includes(Number(turnDuration)) ? Number(turnDuration) : 0
+    const safeTurnDuration = [15, 30, 45].includes(Number(turnDuration)) ? Number(turnDuration) : 0
     const room: Room = {
       id: uuidv4(),
       code: this.generateCode(),
@@ -469,7 +469,7 @@ class RoomManager {
   getPublicRooms() {
     const maxSpectators = parseInt(process.env.MAX_SPECTATORS_PER_ROOM || '100', 10)
     return Array.from(this.rooms.values())
-      .filter(r => r.isPublic)
+      .filter(r => r.isPublic && ((r.player1 ? 1 : 0) + (r.player2 ? 1 : 0) > 0))
       .map(r => {
         const specCount = r.spectators ? r.spectators.size : 0
         const firstSpecs: { id: string; name: string; joinedAt: number }[] = []

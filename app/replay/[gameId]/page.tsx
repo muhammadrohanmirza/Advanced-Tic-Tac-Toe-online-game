@@ -318,10 +318,12 @@ export default function ReplayPage() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            gap: "12px",
+            gap: "10px",
+            flexWrap: "wrap",
+            minWidth: 0,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
             <motion.button
               type="button"
               onClick={() => {
@@ -342,19 +344,23 @@ export default function ReplayPage() {
                 fontSize: "13px",
                 fontWeight: 600,
                 cursor: "pointer",
+                flexShrink: 0,
               }}
             >
               <ArrowLeft size={16} />
               {!isMobile && "History"}
             </motion.button>
 
-            <div>
+            <div style={{ minWidth: 0, overflow: "hidden" }}>
               <h1
                 className="neon-text-cyan"
                 style={{
-                  fontSize: isMobile ? "15px" : "18px",
+                  fontSize: isMobile ? "clamp(13px, 3.5vw, 16px)" : "18px",
                   fontWeight: "bold",
                   margin: 0,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
                 }}
               >
                 Replay: {game.playerX} (X) vs {game.playerO} (O)

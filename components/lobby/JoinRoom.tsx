@@ -2,12 +2,11 @@
 
 import React, { useState } from "react";
 import { NeonButton } from "@/components/ui/NeonButton";
-import { NeonCard } from "@/components/ui/NeonCard";
-import { NeonInput } from "@/components/ui/NeonInput";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { KeyRound, Zap, AlertTriangle, Eye } from "lucide-react";
 
 interface JoinRoomProps {
   onJoinRoom: (roomCode: string) => void;
+  onWatchRoom?: (roomCode: string) => void;
   onQuickMatch: () => void;
   isLoading: boolean;
   error?: string | null;
@@ -15,6 +14,7 @@ interface JoinRoomProps {
 
 export function JoinRoom({
   onJoinRoom,
+  onWatchRoom,
   onQuickMatch,
   isLoading,
   error,
@@ -36,57 +36,135 @@ export function JoinRoom({
   };
 
   return (
-    <NeonCard variant="pink" className="w-full" glow>
-      <h2 className="text-xl font-bold text-neon-pink neon-text-pink mb-4">
-        Join Room
-      </h2>
+    <div
+      className="game-card-glass"
+      style={{
+        width: "100%",
+        padding: "clamp(20px, 4vw, 26px)",
+        borderRadius: "clamp(20px, 4vw, 28px)",
+        boxSizing: "border-box",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+        <KeyRound style={{ width: "20px", height: "20px", color: "var(--accent-x, #00A3FF)" }} />
+        <h3
+          className="game-title-3d"
+          style={{ fontSize: "clamp(18px, 3.5vw, 22px)", margin: 0 }}
+        >
+          Join with Room Code
+        </h3>
+      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <NeonInput
-          label="Room Code"
-          placeholder="ABCD"
-          value={roomCode}
-          onChange={handleCodeChange}
-          variant="pink"
-          maxLength={4}
-          className="text-center text-2xl tracking-widest uppercase"
-        />
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+        <div>
+          <input
+            type="text"
+            placeholder="ABCD"
+            value={roomCode}
+            onChange={handleCodeChange}
+            maxLength={4}
+            style={{
+              width: "100%",
+              height: "56px",
+              textAlign: "center",
+              fontSize: "26px",
+              fontWeight: 800,
+              fontFamily: "monospace",
+              letterSpacing: "8px",
+              textTransform: "uppercase",
+              backgroundColor: "rgba(10, 19, 51, 0.9)",
+              border: "2px solid var(--border-color, rgba(65, 115, 235, 0.35))",
+              borderRadius: "16px",
+              color: "#FFFFFF",
+              outline: "none",
+              transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+              boxShadow: "inset 0 2px 4px rgba(0,0,0,0.3)",
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = "var(--accent-x, #00A3FF)";
+              e.currentTarget.style.boxShadow = "0 0 16px rgba(0, 163, 255, 0.35)";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "var(--border-color, rgba(65, 115, 235, 0.35))";
+              e.currentTarget.style.boxShadow = "inset 0 2px 4px rgba(0,0,0,0.3)";
+            }}
+          />
+        </div>
 
         {error && (
-          <div className="p-3 bg-neon-red/10 border border-neon-red rounded-lg text-neon-red text-sm text-center">
-            {error}
+          <div
+            style={{
+              padding: "10px 14px",
+              backgroundColor: "rgba(255, 59, 48, 0.15)",
+              border: "1px solid var(--accent-red, #FF3B30)",
+              borderRadius: "12px",
+              color: "var(--accent-red, #FF3B30)",
+              fontSize: "13px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              fontFamily: "var(--font-body)",
+            }}
+          >
+            <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+            <span>{error}</span>
           </div>
         )}
 
-        <NeonButton
-          type="submit"
-          variant="pink"
-          className="w-full"
-          isLoading={isLoading}
-          disabled={roomCode.length < 4}
-        >
-          {isLoading ? "Joining..." : "Join Room"}
-        </NeonButton>
+        <div style={{ display: "grid", gridTemplateColumns: onWatchRoom ? "repeat(auto-fit, minmax(110px, 1fr))" : "1fr", gap: "10px" }}>
+          <NeonButton
+            type="submit"
+            variant="blue"
+            size="md"
+            fullWidth
+            isLoading={isLoading}
+            disabled={roomCode.length < 4}
+          >
+            Join Game
+          </NeonButton>
+
+          {onWatchRoom && (
+            <NeonButton
+              type="button"
+              variant="dark"
+              size="md"
+              fullWidth
+              onClick={() => onWatchRoom(roomCode)}
+              disabled={roomCode.length < 4}
+            >
+              <Eye style={{ width: "16px", height: "16px" }} />
+              <span>Spectate</span>
+            </NeonButton>
+          )}
+        </div>
       </form>
 
-      <div className="my-4 flex items-center gap-3">
-        <div className="flex-1 h-px bg-gray-700" />
-        <span className="text-gray-500 text-sm">OR</span>
-        <div className="flex-1 h-px bg-gray-700" />
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          margin: "18px 0",
+        }}
+      >
+        <div style={{ flex: 1, height: "1px", backgroundColor: "rgba(255,255,255,0.12)" }} />
+        <span style={{ fontSize: "12px", color: "var(--text-muted, #8aa0d4)", fontWeight: 700, fontFamily: "var(--font-display)" }}>
+          OR
+        </span>
+        <div style={{ flex: 1, height: "1px", backgroundColor: "rgba(255,255,255,0.12)" }} />
       </div>
 
       <NeonButton
-        variant="green"
-        className="w-full"
+        type="button"
+        variant="primary"
+        size="md"
+        fullWidth
         onClick={onQuickMatch}
         isLoading={isLoading}
       >
-        ⚡ Quick Match
+        <Zap style={{ width: "18px", height: "18px" }} />
+        <span>Quick Match</span>
       </NeonButton>
-
-      <p className="text-gray-500 text-xs text-center mt-3">
-        Find a random opponent instantly
-      </p>
-    </NeonCard>
+    </div>
   );
 }

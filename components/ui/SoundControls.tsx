@@ -2,16 +2,9 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Volume2,
-  VolumeX,
-  Music,
-  Sliders,
-  Check,
-  Play,
-  X as CloseIcon,
-} from "lucide-react";
+import { Volume2, VolumeX, Sliders } from "lucide-react";
 import { useSound } from "@/hooks/useSound";
+import { RoundIconButton } from "@/components/ui/RoundIconButton";
 
 interface SoundControlsProps {
   align?: "left" | "right";
@@ -22,7 +15,7 @@ export function SoundControls({
   align = "right",
   compact = false,
 }: SoundControlsProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [showPopover, setShowPopover] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -34,7 +27,6 @@ export function SoundControls({
     setSfxVolume,
     setMusicVolume,
     toggleSfxMute,
-    toggleMusicMute,
   } = useSound();
 
   // Close when clicking outside
@@ -44,345 +36,114 @@ export function SoundControls({
         containerRef.current &&
         !containerRef.current.contains(event.target as Node)
       ) {
-        setIsOpen(false);
+        setShowPopover(false);
       }
     }
-
-    if (isOpen) {
+    if (showPopover) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isOpen]);
+  }, [showPopover]);
 
-  const allMuted = isSfxMuted && isMusicMuted;
-  const activeColor = allMuted ? "#FF3131" : !isMusicMuted ? "#FF00FF" : "#00FFFF";
+  const isMuted = isSfxMuted && isMusicMuted;
 
   return (
-    <div
-      ref={containerRef}
-      style={{ position: "relative", display: "inline-block" }}
-    >
-      {/* Trigger Button */}
-      <motion.button
-        type="button"
+    <div ref={containerRef} style={{ position: "relative", display: "inline-block" }}>
+      <RoundIconButton
+        variant="dark"
+        size={compact ? 38 : 44}
+        ariaLabel={isMuted ? "Unmute audio" : "Audio settings"}
         onClick={() => {
           playSfx("click");
-          setIsOpen((prev) => !prev);
+          // Toggle mute or open volume slider
+          setShowPopover((prev) => !prev);
         }}
-        whileHover={{
-          scale: 1.05,
-          boxShadow: `0 0 16px ${activeColor}55`,
-        }}
-        whileTap={{ scale: 0.95 }}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "6px",
-          padding: compact ? "6px 10px" : "8px 14px",
-          minHeight: compact ? "36px" : "40px",
-          borderRadius: "10px",
-          border: `1.5px solid ${activeColor}`,
-          backgroundColor: isOpen
-            ? `${activeColor}22`
-            : "var(--bg-card, rgba(13, 13, 13, 0.8))",
-          color: activeColor,
-          cursor: "pointer",
-          fontSize: "13px",
-          fontWeight: 600,
-          textShadow: `0 0 8px ${activeColor}`,
-          boxShadow: `0 0 10px ${activeColor}33`,
-          transition: "border-color 0.2s, background-color 0.2s",
-        }}
-        title="Audio Settings"
-        aria-label="Audio Settings"
       >
-        {allMuted ? (
-          <VolumeX style={{ width: "16px", height: "16px" }} />
-        ) : !isMusicMuted ? (
-          <Music style={{ width: "16px", height: "16px" }} />
+        {isMuted ? (
+          <VolumeX style={{ width: compact ? "18px" : "20px", height: compact ? "18px" : "20px", color: "var(--accent-red, #FF3B30)" }} />
         ) : (
-          <Volume2 style={{ width: "16px", height: "16px" }} />
+          <Volume2 style={{ width: compact ? "18px" : "20px", height: compact ? "18px" : "20px", color: "var(--accent-x, #00A3FF)" }} />
         )}
-        <span style={{ fontSize: "12px", letterSpacing: "0.5px" }}>
-          {allMuted ? "Muted" : "Sound"}
-        </span>
-      </motion.button>
+      </RoundIconButton>
 
-      {/* Popover Panel */}
+      {/* Popover Volume Sliders */}
       <AnimatePresence>
-        {isOpen && (
+        {showPopover && (
           <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0, scale: 0.9, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 8 }}
+            transition={{ duration: 0.15 }}
+            className="game-card-light"
             style={{
               position: "absolute",
               top: "calc(100% + 8px)",
               [align === "right" ? "right" : "left"]: 0,
-              width: "280px",
+              width: "240px",
               padding: "16px",
-              backgroundColor: "var(--bg-card-solid, rgba(13, 13, 13, 0.97))",
-              borderRadius: "14px",
-              border: "1px solid var(--border-color, rgba(0, 255, 255, 0.25))",
-              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 255, 255, 0.15)",
-              backdropFilter: "blur(12px)",
-              zIndex: 1000,
-              color: "var(--text-primary, #ffffff)",
+              borderRadius: "20px",
+              boxShadow: "0 12px 30px rgba(0, 15, 50, 0.35)",
+              zIndex: 100,
             }}
           >
-            {/* Header */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingBottom: "10px",
-                marginBottom: "14px",
-                borderBottom: "1px solid var(--border-color, #1a1a1a)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  color: "#00FFFF",
-                  fontSize: "14px",
-                  fontWeight: 700,
-                  letterSpacing: "0.5px",
-                }}
-              >
-                <Sliders style={{ width: "16px", height: "16px" }} />
-                <span>Audio Settings</span>
-              </div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+              <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "14px", color: "#0F172A" }}>
+                Volume
+              </span>
               <button
                 type="button"
-                onClick={() => setIsOpen(false)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#6b7280",
-                  cursor: "pointer",
-                  padding: "4px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: "6px",
+                onClick={() => {
+                  playSfx("click");
+                  toggleSfxMute();
                 }}
-                aria-label="Close audio settings"
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: isSfxMuted ? "#EF4444" : "#0284C7",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "var(--font-display)",
+                }}
               >
-                <CloseIcon style={{ width: "16px", height: "16px" }} />
+                {isSfxMuted ? "Unmute" : "Mute SFX"}
               </button>
             </div>
 
-            {/* Section 1: Sound Effects (SFX) */}
-            <div style={{ marginBottom: "16px" }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: "8px",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    color: isSfxMuted ? "#6b7280" : "#00FFFF",
-                    fontSize: "13px",
-                    fontWeight: 600,
-                  }}
-                >
-                  {isSfxMuted ? (
-                    <VolumeX style={{ width: "15px", height: "15px" }} />
-                  ) : (
-                    <Volume2 style={{ width: "15px", height: "15px" }} />
-                  )}
-                  <span>Sound Effects</span>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      playSfx("placeX");
-                    }}
-                    disabled={isSfxMuted}
-                    style={{
-                      background: "transparent",
-                      border: "1px solid rgba(0, 255, 255, 0.4)",
-                      borderRadius: "6px",
-                      color: isSfxMuted ? "#4b5563" : "#00FFFF",
-                      padding: "2px 8px",
-                      fontSize: "11px",
-                      cursor: isSfxMuted ? "not-allowed" : "pointer",
-                    }}
-                    title="Test SFX sound"
-                  >
-                    Test
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      toggleSfxMute();
-                      playSfx("click");
-                    }}
-                    style={{
-                      background: isSfxMuted
-                        ? "rgba(255, 49, 49, 0.15)"
-                        : "rgba(0, 255, 255, 0.15)",
-                      border: `1px solid ${
-                        isSfxMuted ? "#FF3131" : "#00FFFF"
-                      }`,
-                      color: isSfxMuted ? "#FF3131" : "#00FFFF",
-                      borderRadius: "6px",
-                      padding: "3px 8px",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                    }}
-                  >
-                    {isSfxMuted ? "Unmute" : "Mute"}
-                  </button>
-                </div>
+            {/* SFX Volume */}
+            <div style={{ marginBottom: "12px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#64748B", marginBottom: "4px" }}>
+                <span>SFX</span>
+                <span>{Math.round(sfxVolume * 100)}%</span>
               </div>
-
-              {/* SFX Volume Slider */}
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={isSfxMuted ? 0 : sfxVolume}
-                  disabled={isSfxMuted}
-                  onChange={(e) => {
-                    setSfxVolume(parseFloat(e.target.value));
-                  }}
-                  className="neon-slider-cyan"
-                  style={{
-                    opacity: isSfxMuted ? 0.4 : 1,
-                    cursor: isSfxMuted ? "not-allowed" : "pointer",
-                  }}
-                />
-                <span
-                  style={{
-                    color: isSfxMuted ? "#6b7280" : "#00FFFF",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    fontFamily: "monospace",
-                    minWidth: "36px",
-                    textAlign: "right",
-                  }}
-                >
-                  {isSfxMuted ? "0%" : `${Math.round(sfxVolume * 100)}%`}
-                </span>
-              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={isSfxMuted ? 0 : sfxVolume}
+                onChange={(e) => setSfxVolume(parseFloat(e.target.value))}
+                style={{ width: "100%", accentColor: "#0284C7", cursor: "pointer" }}
+              />
             </div>
 
-            {/* Section 2: Background Music */}
-            <div style={{ paddingTop: "12px", borderTop: "1px solid var(--border-color, #1a1a1a)" }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: "8px",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    color: isMusicMuted ? "#6b7280" : "#FF00FF",
-                    fontSize: "13px",
-                    fontWeight: 600,
-                  }}
-                >
-                  <Music style={{ width: "15px", height: "15px" }} />
-                  <span>Music (Synth)</span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    toggleMusicMute();
-                    playSfx("click");
-                  }}
-                  style={{
-                    background: isMusicMuted
-                      ? "rgba(255, 49, 49, 0.15)"
-                      : "rgba(255, 0, 255, 0.15)",
-                    border: `1px solid ${
-                      isMusicMuted ? "#FF3131" : "#FF00FF"
-                    }`,
-                    color: isMusicMuted ? "#FF3131" : "#FF00FF",
-                    borderRadius: "6px",
-                    padding: "3px 8px",
-                    fontSize: "11px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  {isMusicMuted ? "Turn On" : "Mute"}
-                </button>
+            {/* Music Volume */}
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#64748B", marginBottom: "4px" }}>
+                <span>Music</span>
+                <span>{Math.round(musicVolume * 100)}%</span>
               </div>
-
-              {/* Music Volume Slider */}
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={isMusicMuted ? 0 : musicVolume}
-                  disabled={isMusicMuted}
-                  onChange={(e) => {
-                    setMusicVolume(parseFloat(e.target.value));
-                  }}
-                  className="neon-slider-pink"
-                  style={{
-                    opacity: isMusicMuted ? 0.4 : 1,
-                    cursor: isMusicMuted ? "not-allowed" : "pointer",
-                  }}
-                />
-                <span
-                  style={{
-                    color: isMusicMuted ? "#6b7280" : "#FF00FF",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    fontFamily: "monospace",
-                    minWidth: "36px",
-                    textAlign: "right",
-                  }}
-                >
-                  {isMusicMuted ? "0%" : `${Math.round(musicVolume * 100)}%`}
-                </span>
-              </div>
-
-              <p
-                style={{
-                  fontSize: "10px",
-                  color: isMusicMuted ? "#6b7280" : "#a855f7",
-                  marginTop: "6px",
-                  marginBottom: 0,
-                  fontStyle: "italic",
-                }}
-              >
-                {isMusicMuted
-                  ? "Ambient background music is off"
-                  : "♪ Ambient neon lo-fi synth playing"}
-              </p>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={isMusicMuted ? 0 : musicVolume}
+                onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
+                style={{ width: "100%", accentColor: "#A855F7", cursor: "pointer" }}
+              />
             </div>
           </motion.div>
         )}
@@ -390,4 +151,3 @@ export function SoundControls({
     </div>
   );
 }
-

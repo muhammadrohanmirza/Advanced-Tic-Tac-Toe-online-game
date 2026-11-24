@@ -5,25 +5,19 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Trophy,
   History,
   Play,
   ArrowLeft,
-  Calendar,
   Clock,
-  Swords,
   Bot,
   Users,
   Search,
-  Filter,
-  CheckCircle2,
-  XCircle,
-  MinusCircle,
-  Sparkles,
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ThemeSwitcher } from "@/components/ui/ThemeSwitcher";
 import { SoundControls } from "@/components/ui/SoundControls";
+import { RoundIconButton } from "@/components/ui/RoundIconButton";
+import { NeonButton } from "@/components/ui/NeonButton";
 import { useSound } from "@/hooks/useSound";
 import { useWindowSize } from "@/hooks/useWindowSize";
 import { GameRecord } from "@/types/game";
@@ -31,7 +25,7 @@ import { GameRecord } from "@/types/game";
 export default function HistoryPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { isMobile, isTablet } = useWindowSize();
+  const { isMobile } = useWindowSize();
   const { playSfx } = useSound();
 
   const [games, setGames] = useState<GameRecord[]>([]);
@@ -156,14 +150,13 @@ export default function HistoryPage() {
     return (
       <div
         style={{
-          minHeight: "100vh",
+          minHeight: "100dvh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "var(--bg-primary, #050505)",
         }}
       >
-        <LoadingSpinner variant="cyan" size="xl" text="Loading match history..." />
+        <LoadingSpinner size="lg" text="Loading match history..." />
       </div>
     );
   }
@@ -171,84 +164,68 @@ export default function HistoryPage() {
   return (
     <div
       style={{
-        minHeight: "100vh",
-        backgroundColor: "var(--bg-primary, #050505)",
-        color: "var(--text-primary, #ffffff)",
+        minHeight: "100dvh",
+        display: "flex",
+        flexDirection: "column",
+        padding: "clamp(12px, 2.5vw, 24px)",
+        paddingBottom: "max(28px, env(safe-area-inset-bottom))",
+        maxWidth: "1100px",
+        margin: "0 auto",
+        width: "100%",
+        boxSizing: "border-box",
+        position: "relative",
+        zIndex: 1,
       }}
     >
-      {/* Header */}
+      {/* Header Bar */}
       <header
         style={{
-          padding: isMobile ? "12px 16px" : "16px 24px",
-          borderBottom: "1px solid var(--border-color, #1a1a1a)",
-          backgroundColor: "var(--bg-card, rgba(13,13,13,0.95))",
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-          backdropFilter: "blur(10px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "clamp(16px, 3vw, 24px)",
+          gap: "12px",
+          flexWrap: "wrap",
         }}
       >
-        <div
-          style={{
-            maxWidth: "1100px",
-            margin: "0 auto",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "12px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <motion.button
-              type="button"
-              onClick={() => {
-                playSfx("click");
-                router.push("/lobby");
-              }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+          <RoundIconButton
+            variant="blue"
+            size={42}
+            ariaLabel="Back to Lobby"
+            onClick={() => {
+              playSfx("click");
+              router.push("/lobby");
+            }}
+          >
+            <ArrowLeft style={{ width: "20px", height: "20px" }} />
+          </RoundIconButton>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+            <History style={{ width: "24px", height: "24px", color: "var(--accent-x, #00A3FF)", flexShrink: 0 }} />
+            <h1
+              className="game-title-3d"
               style={{
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid var(--border-color, #262626)",
-                borderRadius: "10px",
-                padding: "8px 12px",
-                color: "var(--text-primary, #ffffff)",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                fontSize: "13px",
-                fontWeight: 600,
-                cursor: "pointer",
+                fontSize: "clamp(18px, 4vw, 28px)",
+                margin: 0,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}
             >
-              <ArrowLeft size={16} />
-              {!isMobile && "Lobby"}
-            </motion.button>
-
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <History style={{ color: "#00FFFF", width: "22px", height: "22px" }} />
-              <h1
-                className="neon-text-cyan"
-                style={{
-                  fontSize: isMobile ? "17px" : "20px",
-                  fontWeight: "bold",
-                  margin: 0,
-                }}
-              >
-                My Games & Replays
-              </h1>
-            </div>
+              My Games &amp; Replays
+            </h1>
           </div>
+        </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <SoundControls compact={isMobile} align="right" />
-            <ThemeSwitcher compact={isMobile} align="right" />
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <SoundControls align="right" />
+          <ThemeSwitcher align="right" />
         </div>
       </header>
 
       {/* Main Content */}
-      <main style={{ maxWidth: "1100px", margin: "0 auto", padding: isMobile ? "16px" : "24px" }}>
+      <main style={{ width: "100%", display: "flex", flexDirection: "column" }}>
         {/* Stats Row */}
         <div
           style={{
@@ -260,78 +237,93 @@ export default function HistoryPage() {
         >
           <div
             style={{
-              background: "var(--bg-card, rgba(13,13,13,0.8))",
-              border: "1px solid var(--border-color, #262626)",
-              borderRadius: "14px",
-              padding: "14px",
+              background: "var(--bg-card, rgba(14, 25, 66, 0.75))",
+              border: "1.5px solid var(--border-color, rgba(65, 115, 235, 0.3))",
+              borderRadius: "18px",
+              padding: "16px 12px",
               textAlign: "center",
+              boxShadow: "0 6px 16px rgba(0, 0, 0, 0.25)",
             }}
           >
-            <div style={{ fontSize: "12px", color: "var(--text-muted, #9ca3af)", marginBottom: "4px" }}>
+            <div style={{ fontSize: "12px", color: "var(--text-secondary, #c2d6ff)", marginBottom: "4px", fontFamily: "var(--font-display)", fontWeight: 600 }}>
               Total Games
             </div>
-            <div style={{ fontSize: "22px", fontWeight: "bold", color: "#00FFFF" }}>{stats.total}</div>
+            <div style={{ fontSize: "24px", fontWeight: 800, color: "var(--accent-x, #00A3FF)", fontFamily: "var(--font-display)" }}>
+              {stats.total}
+            </div>
           </div>
 
           <div
             style={{
-              background: "var(--bg-card, rgba(13,13,13,0.8))",
-              border: "1px solid var(--border-color, #262626)",
-              borderRadius: "14px",
-              padding: "14px",
+              background: "var(--bg-card, rgba(14, 25, 66, 0.75))",
+              border: "1.5px solid var(--border-color, rgba(65, 115, 235, 0.3))",
+              borderRadius: "18px",
+              padding: "16px 12px",
               textAlign: "center",
+              boxShadow: "0 6px 16px rgba(0, 0, 0, 0.25)",
             }}
           >
-            <div style={{ fontSize: "12px", color: "var(--text-muted, #9ca3af)", marginBottom: "4px" }}>
+            <div style={{ fontSize: "12px", color: "var(--text-secondary, #c2d6ff)", marginBottom: "4px", fontFamily: "var(--font-display)", fontWeight: 600 }}>
               Victories
             </div>
-            <div style={{ fontSize: "22px", fontWeight: "bold", color: "#00FF41" }}>{stats.wins}</div>
+            <div style={{ fontSize: "24px", fontWeight: 800, color: "var(--accent-green, #00E676)", fontFamily: "var(--font-display)" }}>
+              {stats.wins}
+            </div>
           </div>
 
           <div
             style={{
-              background: "var(--bg-card, rgba(13,13,13,0.8))",
-              border: "1px solid var(--border-color, #262626)",
-              borderRadius: "14px",
-              padding: "14px",
+              background: "var(--bg-card, rgba(14, 25, 66, 0.75))",
+              border: "1.5px solid var(--border-color, rgba(65, 115, 235, 0.3))",
+              borderRadius: "18px",
+              padding: "16px 12px",
               textAlign: "center",
+              boxShadow: "0 6px 16px rgba(0, 0, 0, 0.25)",
             }}
           >
-            <div style={{ fontSize: "12px", color: "var(--text-muted, #9ca3af)", marginBottom: "4px" }}>
+            <div style={{ fontSize: "12px", color: "var(--text-secondary, #c2d6ff)", marginBottom: "4px", fontFamily: "var(--font-display)", fontWeight: 600 }}>
               Defeats
             </div>
-            <div style={{ fontSize: "22px", fontWeight: "bold", color: "#FF3131" }}>{stats.losses}</div>
+            <div style={{ fontSize: "24px", fontWeight: 800, color: "var(--accent-red, #FF3B30)", fontFamily: "var(--font-display)" }}>
+              {stats.losses}
+            </div>
           </div>
 
           <div
             style={{
-              background: "var(--bg-card, rgba(13,13,13,0.8))",
-              border: "1px solid var(--border-color, #262626)",
-              borderRadius: "14px",
-              padding: "14px",
+              background: "var(--bg-card, rgba(14, 25, 66, 0.75))",
+              border: "1.5px solid var(--border-color, rgba(65, 115, 235, 0.3))",
+              borderRadius: "18px",
+              padding: "16px 12px",
               textAlign: "center",
+              boxShadow: "0 6px 16px rgba(0, 0, 0, 0.25)",
             }}
           >
-            <div style={{ fontSize: "12px", color: "var(--text-muted, #9ca3af)", marginBottom: "4px" }}>
+            <div style={{ fontSize: "12px", color: "var(--text-secondary, #c2d6ff)", marginBottom: "4px", fontFamily: "var(--font-display)", fontWeight: 600 }}>
               Draws
             </div>
-            <div style={{ fontSize: "22px", fontWeight: "bold", color: "#FFD700" }}>{stats.draws}</div>
+            <div style={{ fontSize: "24px", fontWeight: 800, color: "var(--accent-o, #FFB703)", fontFamily: "var(--font-display)" }}>
+              {stats.draws}
+            </div>
           </div>
 
           <div
             style={{
-              background: "var(--bg-card, rgba(13,13,13,0.8))",
-              border: "1px solid var(--border-color, #262626)",
-              borderRadius: "14px",
-              padding: "14px",
+              background: "var(--bg-card, rgba(14, 25, 66, 0.75))",
+              border: "1.5px solid var(--border-color, rgba(65, 115, 235, 0.3))",
+              borderRadius: "18px",
+              padding: "16px 12px",
               textAlign: "center",
+              boxShadow: "0 6px 16px rgba(0, 0, 0, 0.25)",
               gridColumn: isMobile ? "span 2" : "span 1",
             }}
           >
-            <div style={{ fontSize: "12px", color: "var(--text-muted, #9ca3af)", marginBottom: "4px" }}>
+            <div style={{ fontSize: "12px", color: "var(--text-secondary, #c2d6ff)", marginBottom: "4px", fontFamily: "var(--font-display)", fontWeight: 600 }}>
               Win Rate
             </div>
-            <div style={{ fontSize: "22px", fontWeight: "bold", color: "#FF00FF" }}>{stats.winRate}%</div>
+            <div style={{ fontSize: "24px", fontWeight: 800, color: "var(--brand-purple, #9D4EDD)", fontFamily: "var(--font-display)" }}>
+              {stats.winRate}%
+            </div>
           </div>
         </div>
 
@@ -350,89 +342,52 @@ export default function HistoryPage() {
           <div
             style={{
               display: "flex",
-              background: "var(--bg-card, rgba(13,13,13,0.8))",
-              border: "1px solid var(--border-color, #262626)",
-              borderRadius: "12px",
-              padding: "4px",
-              gap: "4px",
+              gap: "8px",
+              overflowX: "auto",
+              paddingBottom: "4px",
             }}
           >
-            <button
-              type="button"
-              onClick={() => {
-                playSfx("click");
-                setFilterMode("all");
-              }}
-              style={{
-                flex: 1,
-                padding: "8px 14px",
-                border: "none",
-                borderRadius: "8px",
-                background: filterMode === "all" ? "rgba(0,255,255,0.15)" : "transparent",
-                color: filterMode === "all" ? "#00FFFF" : "var(--text-muted, #9ca3af)",
-                fontSize: "13px",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.2s",
-                whiteSpace: "nowrap",
-              }}
-            >
-              All Matches
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                playSfx("click");
-                setFilterMode("multiplayer");
-              }}
-              style={{
-                flex: 1,
-                padding: "8px 14px",
-                border: "none",
-                borderRadius: "8px",
-                background: filterMode === "multiplayer" ? "rgba(0,255,255,0.15)" : "transparent",
-                color: filterMode === "multiplayer" ? "#00FFFF" : "var(--text-muted, #9ca3af)",
-                fontSize: "13px",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.2s",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "6px",
-                whiteSpace: "nowrap",
-              }}
-            >
-              <Users size={14} />
-              Multiplayer
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                playSfx("click");
-                setFilterMode("ai");
-              }}
-              style={{
-                flex: 1,
-                padding: "8px 14px",
-                border: "none",
-                borderRadius: "8px",
-                background: filterMode === "ai" ? "rgba(0,255,255,0.15)" : "transparent",
-                color: filterMode === "ai" ? "#00FFFF" : "var(--text-muted, #9ca3af)",
-                fontSize: "13px",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.2s",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "6px",
-                whiteSpace: "nowrap",
-              }}
-            >
-              <Bot size={14} />
-              vs AI
-            </button>
+            {[
+              { id: "all" as const, label: "All Matches", icon: null },
+              { id: "multiplayer" as const, label: "Multiplayer", icon: <Users size={14} /> },
+              { id: "ai" as const, label: "vs AI", icon: <Bot size={14} /> },
+            ].map((tab) => {
+              const isActive = filterMode === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    playSfx("click");
+                    setFilterMode(tab.id);
+                  }}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "8px 16px",
+                    borderRadius: "9999px",
+                    backgroundColor: isActive
+                      ? "var(--accent-x, #00A3FF)"
+                      : "var(--bg-card, rgba(14, 25, 66, 0.7))",
+                    color: isActive ? "#FFFFFF" : "var(--text-secondary, #c2d6ff)",
+                    border: isActive
+                      ? "1.5px solid rgba(255, 255, 255, 0.5)"
+                      : "1.5px solid var(--border-color, rgba(65, 115, 235, 0.3))",
+                    fontFamily: "var(--font-display)",
+                    fontWeight: 700,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    boxShadow: isActive ? "0 4px 12px rgba(0, 163, 255, 0.35)" : "none",
+                    whiteSpace: "nowrap",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  {tab.icon}
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Search Box */}
@@ -446,10 +401,10 @@ export default function HistoryPage() {
               size={16}
               style={{
                 position: "absolute",
-                left: "12px",
+                left: "14px",
                 top: "50%",
                 transform: "translateY(-50%)",
-                color: "var(--text-muted, #9ca3af)",
+                color: "var(--text-muted, #8aa0d4)",
               }}
             />
             <input
@@ -459,13 +414,16 @@ export default function HistoryPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
                 width: "100%",
-                padding: "8px 12px 8px 36px",
-                background: "var(--bg-card, rgba(13,13,13,0.8))",
-                border: "1px solid var(--border-color, #262626)",
-                borderRadius: "10px",
+                padding: "10px 14px 10px 38px",
+                background: "var(--bg-card, rgba(14, 25, 66, 0.7))",
+                border: "1.5px solid var(--border-color, rgba(65, 115, 235, 0.3))",
+                borderRadius: "9999px",
                 color: "var(--text-primary, #ffffff)",
                 fontSize: "13px",
+                fontFamily: "var(--font-body)",
                 outline: "none",
+                boxSizing: "border-box",
+                transition: "border-color 0.2s ease",
               }}
             />
           </div>
@@ -475,23 +433,42 @@ export default function HistoryPage() {
         {filteredGames.length === 0 ? (
           <div
             style={{
-              background: "var(--bg-card, rgba(13,13,13,0.8))",
-              border: "1px solid var(--border-color, #262626)",
-              borderRadius: "16px",
-              padding: isMobile ? "32px 16px" : "48px 24px",
+              background: "var(--bg-card, rgba(14, 25, 66, 0.75))",
+              border: "1.5px solid var(--border-color, rgba(65, 115, 235, 0.25))",
+              borderRadius: "24px",
+              padding: isMobile ? "36px 20px" : "48px 32px",
               textAlign: "center",
+              boxShadow: "0 10px 30px rgba(0, 0, 0, 0.3)",
             }}
           >
-            <History size={48} style={{ color: "var(--text-muted, #6b7280)", margin: "0 auto 16px" }} />
-            <h3 style={{ fontSize: "18px", fontWeight: "bold", marginBottom: "8px" }}>
+            <div
+              style={{
+                width: "64px",
+                height: "64px",
+                borderRadius: "50%",
+                background: "rgba(0, 163, 255, 0.15)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 16px",
+                border: "1px solid rgba(0, 163, 255, 0.3)",
+              }}
+            >
+              <History size={32} style={{ color: "var(--accent-x, #00A3FF)" }} />
+            </div>
+            <h3
+              className="game-title-3d"
+              style={{ fontSize: "20px", marginBottom: "8px" }}
+            >
               {games.length === 0 ? "No Games Recorded Yet" : "No Matches Found"}
             </h3>
             <p
               style={{
-                color: "var(--text-muted, #9ca3af)",
+                color: "var(--text-secondary, #c2d6ff)",
                 fontSize: "14px",
-                maxWidth: "400px",
+                maxWidth: "420px",
                 margin: "0 auto 24px",
+                lineHeight: 1.5,
               }}
             >
               {games.length === 0
@@ -500,42 +477,20 @@ export default function HistoryPage() {
             </p>
             {games.length === 0 && (
               <div style={{ display: "flex", justifyContent: "center", gap: "12px", flexWrap: "wrap" }}>
-                <motion.button
-                  type="button"
+                <NeonButton
+                  variant="primary"
+                  size="md"
                   onClick={() => router.push("/lobby")}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  style={{
-                    padding: "10px 20px",
-                    background: "rgba(0,255,255,0.1)",
-                    border: "2px solid #00FFFF",
-                    borderRadius: "10px",
-                    color: "#00FFFF",
-                    fontWeight: 700,
-                    fontSize: "14px",
-                    cursor: "pointer",
-                  }}
                 >
                   Play Multiplayer
-                </motion.button>
-                <motion.button
-                  type="button"
+                </NeonButton>
+                <NeonButton
+                  variant="purple"
+                  size="md"
                   onClick={() => router.push("/play-ai")}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  style={{
-                    padding: "10px 20px",
-                    background: "rgba(0,255,65,0.1)",
-                    border: "2px solid #00FF41",
-                    borderRadius: "10px",
-                    color: "#00FF41",
-                    fontWeight: 700,
-                    fontSize: "14px",
-                    cursor: "pointer",
-                  }}
                 >
                   Play vs AI
-                </motion.button>
+                </NeonButton>
               </div>
             )}
           </div>
@@ -550,17 +505,24 @@ export default function HistoryPage() {
 
                 const resultBadgeColor =
                   result === "win"
-                    ? "#00FF41"
+                    ? "#00E676"
                     : result === "loss"
-                    ? "#FF3131"
-                    : "#FFD700";
+                    ? "#FF3B30"
+                    : "#FFB703";
 
                 const resultBg =
                   result === "win"
-                    ? "rgba(0,255,65,0.1)"
+                    ? "rgba(0, 230, 118, 0.15)"
                     : result === "loss"
-                    ? "rgba(255,49,49,0.1)"
-                    : "rgba(255,215,0,0.1)";
+                    ? "rgba(255, 59, 48, 0.15)"
+                    : "rgba(255, 183, 3, 0.15)";
+
+                const resultGlow =
+                  result === "win"
+                    ? "rgba(0, 230, 118, 0.25)"
+                    : result === "loss"
+                    ? "rgba(255, 59, 48, 0.25)"
+                    : "rgba(255, 183, 3, 0.25)";
 
                 const resultLabel =
                   result === "win" ? "VICTORY" : result === "loss" ? "DEFEAT" : "DRAW";
@@ -576,49 +538,44 @@ export default function HistoryPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.03 }}
                     style={{
-                      background: "var(--bg-card, rgba(13,13,13,0.85))",
-                      border: "1px solid var(--border-color, #262626)",
-                      borderRadius: "14px",
-                      padding: isMobile ? "14px" : "16px 20px",
+                      background: "var(--bg-card, rgba(14, 25, 66, 0.75))",
+                      border: "1.5px solid var(--border-color, rgba(65, 115, 235, 0.25))",
+                      borderRadius: "18px",
+                      padding: isMobile ? "14px 16px" : "16px 22px",
                       display: "flex",
                       flexDirection: isMobile ? "column" : "row",
                       alignItems: isMobile ? "flex-start" : "center",
                       justifyContent: "space-between",
                       gap: "14px",
-                      transition: "border-color 0.2s, box-shadow 0.2s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "#00FFFF";
-                      e.currentTarget.style.boxShadow = "0 0 15px rgba(0,255,255,0.15)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border-color, #262626)";
-                      e.currentTarget.style.boxShadow = "none";
+                      boxShadow: "0 6px 18px rgba(0, 0, 0, 0.2)",
+                      transition: "all 0.2s ease",
                     }}
                   >
                     {/* Left: Result Badge + Matchup */}
-                    <div style={{ display: "flex", alignItems: "center", gap: "14px", flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "14px", flex: 1, width: isMobile ? "100%" : "auto" }}>
                       {/* Result Pill */}
                       <div
                         style={{
-                          width: "72px",
+                          width: "80px",
                           padding: "6px 0",
-                          borderRadius: "8px",
-                          border: `1px solid ${resultBadgeColor}`,
+                          borderRadius: "9999px",
+                          border: `1.5px solid ${resultBadgeColor}`,
                           background: resultBg,
                           color: resultBadgeColor,
                           fontSize: "12px",
+                          fontFamily: "var(--font-display)",
                           fontWeight: 800,
                           textAlign: "center",
                           letterSpacing: "0.5px",
                           flexShrink: 0,
+                          boxShadow: `0 2px 8px ${resultGlow}`,
                         }}
                       >
                         {resultLabel}
                       </div>
 
                       {/* Match Details */}
-                      <div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div
                           style={{
                             display: "flex",
@@ -632,7 +589,11 @@ export default function HistoryPage() {
                             style={{
                               fontSize: isMobile ? "15px" : "16px",
                               fontWeight: 700,
+                              fontFamily: "var(--font-display)",
                               color: "var(--text-primary, #ffffff)",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
                             }}
                           >
                             vs {opponentName || "Opponent"}
@@ -641,22 +602,24 @@ export default function HistoryPage() {
                             style={{
                               fontSize: "11px",
                               padding: "2px 8px",
-                              borderRadius: "6px",
-                              background: isMulti ? "rgba(0,255,255,0.12)" : "rgba(255,0,255,0.12)",
-                              border: `1px solid ${isMulti ? "rgba(0,255,255,0.3)" : "rgba(255,0,255,0.3)"}`,
-                              color: isMulti ? "#00FFFF" : "#FF00FF",
-                              fontWeight: 600,
+                              borderRadius: "9999px",
+                              background: isMulti ? "rgba(0, 163, 255, 0.15)" : "rgba(157, 78, 221, 0.15)",
+                              border: `1px solid ${isMulti ? "rgba(0, 163, 255, 0.4)" : "rgba(157, 78, 221, 0.4)"}`,
+                              color: isMulti ? "var(--accent-x, #00A3FF)" : "var(--brand-purple, #9D4EDD)",
+                              fontFamily: "var(--font-display)",
+                              fontWeight: 700,
                             }}
                           >
                             {modeLabel}
                           </span>
                           <span
                             style={{
-                              fontSize: "11px",
-                              color: "var(--text-muted, #9ca3af)",
+                              fontSize: "12px",
+                              color: "var(--text-secondary, #c2d6ff)",
+                              fontFamily: "var(--font-display)",
                             }}
                           >
-                            (You were {isUserX ? "X" : "O"})
+                            ({isUserX ? "X" : "O"})
                           </span>
                         </div>
 
@@ -666,7 +629,7 @@ export default function HistoryPage() {
                             alignItems: "center",
                             gap: "12px",
                             fontSize: "12px",
-                            color: "var(--text-muted, #9ca3af)",
+                            color: "var(--text-muted, #8aa0d4)",
                           }}
                         >
                           <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
@@ -681,38 +644,18 @@ export default function HistoryPage() {
 
                     {/* Right: Watch Replay CTA Button */}
                     <div style={{ width: isMobile ? "100%" : "auto" }}>
-                      <motion.button
-                        type="button"
+                      <NeonButton
+                        variant="blue"
+                        size="sm"
                         onClick={() => {
                           playSfx("click");
                           router.push(`/replay/${game.id}`);
                         }}
-                        whileHover={{
-                          scale: 1.05,
-                          boxShadow: "0 0 16px rgba(0,255,255,0.5)",
-                        }}
-                        whileTap={{ scale: 0.95 }}
-                        style={{
-                          width: isMobile ? "100%" : "auto",
-                          padding: "8px 18px",
-                          borderRadius: "10px",
-                          border: "2px solid #00FFFF",
-                          background: "rgba(0,255,255,0.08)",
-                          color: "#00FFFF",
-                          fontSize: "13px",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "8px",
-                          textShadow: "0 0 8px rgba(0,255,255,0.5)",
-                          transition: "all 0.2s",
-                        }}
+                        style={{ width: isMobile ? "100%" : "auto", minWidth: isMobile ? "100%" : "140px" }}
                       >
-                        <Play size={14} fill="#00FFFF" />
-                        Watch Replay
-                      </motion.button>
+                        <Play size={14} fill="#ffffff" />
+                        <span>Watch Replay</span>
+                      </NeonButton>
                     </div>
                   </motion.div>
                 );
@@ -724,4 +667,3 @@ export default function HistoryPage() {
     </div>
   );
 }
-

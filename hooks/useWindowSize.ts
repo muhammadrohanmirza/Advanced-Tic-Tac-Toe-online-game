@@ -27,5 +27,6 @@ export function useWindowSize() {
     isTablet: size.width >= 768 && size.width < 1024,
     isDesktop: size.width >= 1024,
     isWide: size.width >= 1920,
+    isTiny: size.width < 360,
   };
 }

@@ -6,8 +6,11 @@ import { useRouter } from "next/navigation";
 import { NeonButton } from "@/components/ui/NeonButton";
 import { NeonInput } from "@/components/ui/NeonInput";
 import { NeonCard } from "@/components/ui/NeonCard";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { CrownBadge } from "@/components/ui/CrownBadge";
+import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal";
 import Link from "next/link";
+import { Mail, Lock, AlertTriangle } from "lucide-react";
+import toast from "react-hot-toast";
 
 export function LoginForm() {
   const router = useRouter();
@@ -15,6 +18,7 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,83 +27,153 @@ export function LoginForm() {
 
     try {
       const result = await signIn("credentials", {
-        email,
+        email: email.trim().toLowerCase(),
         password,
         redirect: false,
       });
 
       if (result?.error) {
         setError("Invalid email or password");
+        toast.error("Invalid email or password");
         setIsLoading(false);
         return;
       }
 
+      toast.success("Welcome back!");
       router.push("/lobby");
       router.refresh();
-    } catch (err) {
+    } catch {
       setError("Something went wrong. Please try again.");
       setIsLoading(false);
     }
   };
 
   return (
-    <NeonCard variant="cyan" className="w-full max-w-md mx-auto" glow>
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-neon-cyan neon-text-cyan mb-2">
-          Welcome Back
-        </h1>
-        <p className="text-gray-400">Sign in to continue playing</p>
-      </div>
+    <>
+      <NeonCard variant="glass" className="w-full max-w-md mx-auto" glow>
+        <div style={{ textAlign: "center", marginBottom: "24px" }}>
+          <CrownBadge size={34} style={{ marginBottom: "6px" }} />
+          <h1
+            className="game-title-3d"
+            style={{ fontSize: "28px", margin: "0 0 6px" }}
+          >
+            Welcome Back
+          </h1>
+          <p
+            style={{
+              color: "var(--text-secondary, #c2d6ff)",
+              fontSize: "14px",
+              margin: 0,
+            }}
+          >
+            Sign in to continue playing
+          </p>
+        </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <NeonInput
-          label="Email"
-          type="email"
-          placeholder="your@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          variant="cyan"
-        />
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <NeonInput
+            label="Email"
+            type="email"
+            placeholder="your@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            variant="cyan"
+            icon={<Mail className="w-5 h-5" />}
+          />
 
-        <NeonInput
-          label="Password"
-          type="password"
-          placeholder="••••••••"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          variant="cyan"
-        />
-
-        {error && (
-          <div className="p-3 bg-neon-red/10 border border-neon-red rounded-lg text-neon-red text-sm">
-            {error}
+          <div>
+            <NeonInput
+              label="Password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              variant="cyan"
+              icon={<Lock className="w-5 h-5" />}
+              showPasswordToggle
+            />
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "6px" }}>
+              <button
+                type="button"
+                onClick={() => setIsForgotModalOpen(true)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--accent-x, #00A3FF)",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "var(--font-display)",
+                }}
+              >
+                Forgot Password?
+              </button>
+            </div>
           </div>
-        )}
 
-        <NeonButton
-          type="submit"
-          variant="cyan"
-          className="neon-border-cyan w-full text-center justify-center items-center"
-          isLoading={isLoading}
+          {error && (
+            <div
+              style={{
+                padding: "12px 14px",
+                backgroundColor: "rgba(255, 59, 48, 0.15)",
+                border: "1px solid var(--accent-red, #FF3B30)",
+                borderRadius: "14px",
+                color: "var(--accent-red, #FF3B30)",
+                fontSize: "13px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <AlertTriangle size={16} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <NeonButton
+            type="submit"
+            variant="primary"
+            size="lg"
+            fullWidth
+            isLoading={isLoading}
+            style={{ marginTop: "8px", minHeight: "50px" }}
+          >
+            Sign In
+          </NeonButton>
+        </form>
+
+        <div
+          style={{
+            marginTop: "24px",
+            textAlign: "center",
+            fontFamily: "var(--font-display)",
+            fontSize: "14px",
+            color: "var(--text-secondary, #c2d6ff)",
+          }}
         >
-          Sign In
-        </NeonButton>
-        
-      </form>
-
-      <div className="mt-6 text-center">
-        <p className="text-gray-400">
           Don&apos;t have an account?{" "}
           <Link
             href="/signup"
-            className="text-neon-pink hover:underline neon-text-pink"
+            style={{
+              color: "var(--accent-o, #FF7A00)",
+              fontWeight: 700,
+              textDecoration: "none",
+              marginLeft: "4px",
+            }}
           >
             Sign Up
           </Link>
-        </p>
-      </div>
-    </NeonCard>
+        </div>
+      </NeonCard>
+
+      <ForgotPasswordModal
+        isOpen={isForgotModalOpen}
+        onClose={() => setIsForgotModalOpen(false)}
+        defaultEmail={email}
+        onSuccess={(confirmedEmail) => setEmail(confirmedEmail)}
+      />
+    </>
   );
 }

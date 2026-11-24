@@ -23,10 +23,11 @@ export function OnlineBoard({ board, currentTurn, playerSymbol, gameStatus, winn
     <motion.div
       style={{
         padding: "24px",
-        backgroundColor: "rgba(13,13,13,0.5)",
-        borderRadius: "24px",
-        border: "1px solid #1a1a1a",
-        backdropFilter: "blur(10px)",
+        backgroundColor: "rgba(15, 23, 42, 0.8)",
+        borderRadius: "28px",
+        border: "1.5px solid rgba(255, 255, 255, 0.12)",
+        backdropFilter: "blur(14px)",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)",
       }}
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
