@@ -19,10 +19,15 @@ export default function HomePage() {
   const router = useRouter();
   const { data: session } = useSession();
   const { isMobile, isTiny } = useWindowSize();
+  const [mounted, setMounted] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
   const [isLoadingScores, setIsLoadingScores] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fetch leaderboard when modal opened
   useEffect(() => {
@@ -83,7 +88,7 @@ export default function HomePage() {
       >
         {/* Brand / Status Pill or Auth Buttons */}
         <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0, flexShrink: 1 }}>
-          {session ? (
+          {mounted && session ? (
             <div
               style={{
                 display: "inline-flex",
@@ -127,26 +132,26 @@ export default function HomePage() {
                 size="sm"
                 onClick={() => router.push("/login")}
                 style={{
-                  padding: isTiny ? "8px 10px" : "8px 14px",
+                  padding: mounted && isTiny ? "8px 10px" : "8px 14px",
                   minHeight: "44px",
                 }}
                 aria-label="Login"
               >
                 <LogIn style={{ width: "16px", height: "16px" }} />
-                {!isTiny && <span>Login</span>}
+                <span style={{ display: mounted && isTiny ? "none" : "inline" }}>Login</span>
               </NeonButton>
               <NeonButton
                 variant="blue"
                 size="sm"
                 onClick={() => router.push("/signup")}
                 style={{
-                  padding: isTiny ? "8px 10px" : "8px 14px",
+                  padding: mounted && isTiny ? "8px 10px" : "8px 14px",
                   minHeight: "44px",
                 }}
                 aria-label="Sign Up"
               >
                 <UserPlus style={{ width: "16px", height: "16px" }} />
-                {!isTiny && <span>Sign Up</span>}
+                <span style={{ display: mounted && isTiny ? "none" : "inline" }}>Sign Up</span>
               </NeonButton>
             </div>
           )}
@@ -276,7 +281,7 @@ export default function HomePage() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: session?.user
+                gridTemplateColumns: mounted && session?.user
                   ? (isTiny ? "1fr 1fr" : "repeat(3, 1fr)")
                   : "1fr 1fr",
                 gap: "8px",
@@ -297,7 +302,7 @@ export default function HomePage() {
                 <span>Rankings</span>
               </NeonButton>
 
-              {session?.user && (
+              {mounted && session?.user && (
                 <NeonButton
                   variant="dark-blue"
                   size="sm"
@@ -320,7 +325,7 @@ export default function HomePage() {
                   padding: "8px 10px",
                   fontSize: "13px",
                   minHeight: "44px",
-                  ...(session?.user && isTiny ? { gridColumn: "span 2" } : {}),
+                  ...(mounted && session?.user && isTiny ? { gridColumn: "span 2" } : {}),
                 }}
                 onClick={() => setShowSettings(true)}
               >

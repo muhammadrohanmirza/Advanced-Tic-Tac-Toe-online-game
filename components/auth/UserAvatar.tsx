@@ -68,7 +68,7 @@ export function UserAvatar({ userName, userEmail }: UserAvatarProps) {
         >
           {isSmallScreen ? firstName : userName}
         </p>
-        {!isSmallScreen && userEmail && (
+        {userEmail && (
           <p
             style={{
               fontSize: "11px",
@@ -78,6 +78,7 @@ export function UserAvatar({ userName, userEmail }: UserAvatarProps) {
               overflow: "hidden",
               textOverflow: "ellipsis",
               maxWidth: "140px",
+              display: isSmallScreen ? "none" : "block",
             }}
             title={userEmail}
           >

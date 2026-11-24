@@ -220,6 +220,7 @@ export function NeonButton({
         userSelect: "none",
         WebkitTapHighlightColor: "transparent",
         boxSizing: "border-box",
+        whiteSpace: "nowrap",
         ...sizeStyles[size],
         ...vStyles,
         ...props.style,
@@ -232,7 +233,7 @@ export function NeonButton({
       onClick={handleClick}
     >
       {isLoading ? (
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <>
           <Loader2
             style={{
               width: "18px",
@@ -241,19 +242,9 @@ export function NeonButton({
             }}
           />
           <span>Loading...</span>
-        </div>
+        </>
       ) : (
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "8px",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {children}
-        </span>
+        children
       )}
     </motion.button>
   );
